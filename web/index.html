@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Despertar · Bancada de teste</title>
+<style>
+  :root {
+    --bg: #0e0f1d;
+    --surface: #171830;
+    --surface-2: #1f2140;
+    --line: #2c2e55;
+    --fg: #ebe8f7;
+    --muted: #9693b5;
+    --gate: #f2b23a;
+    --done: #4fd18b;
+    --bad: #ff7070;
+    --mod: #8fb4ff;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
+  }
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 16px 32px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+  h1 { margin: 0; font-size: 22px; }
+  h2 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .hint { color: var(--muted); font-size: 13px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+
+  /* Chat */
+  .chat { display: grid; grid-template-rows: auto minmax(320px, 58vh) auto; gap: 12px; }
+  .log {
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .line { word-wrap: break-word; }
+  .line .who { font-weight: 600; margin-right: 6px; }
+  .line.user .who { color: var(--gate); }
+  .line.user.mod .who { color: var(--mod); }
+  .line.bot { padding-left: 10px; border-left: 2px solid var(--done); }
+  .line.bot .who { color: var(--done); }
+  .line.sys { color: var(--muted); font-style: italic; font-size: 13px; }
+  .line.err { color: var(--bad); }
+  .composer { display: grid; gap: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input[type=text] {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: inherit;
+  }
+  #name { width: 130px; }
+  #text { flex: 1 1 220px; min-width: 0; }
+  button {
+    background: var(--surface-2);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--gate); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gate); outline-offset: 1px; }
+  button.primary { background: var(--gate); color: #1b1300; border-color: var(--gate); font-weight: 600; }
+  button.danger { color: var(--bad); }
+  .quick button { font-family: var(--mono); font-size: 13px; }
+  label.check { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
+
+  /* Lateral */
+  .side { display: grid; gap: 20px; align-content: start; }
+  .season { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .season b { color: var(--fg); }
+  .paused { color: var(--bad); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; }
+  td.rank { font-weight: 700; color: var(--gate); }
+  td.status { white-space: normal; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 800px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Despertar · bancada de teste</h1>
+    <span class="hint">Chat de mentira, só nesta máquina. Os dados ficam em data/web.db, separados do bot de verdade.</span>
+  </header>
+
+  <section class="panel chat" aria-label="Chat simulado">
+    <h2>Chat</h2>
+    <div class="log" id="log" aria-live="polite"></div>
+    <form class="composer" id="form">
+      <div class="row">
+        <input type="text" id="name" value="ana" aria-label="Nome de quem fala" autocomplete="off">
+        <input type="text" id="text" placeholder="!cacar" aria-label="Mensagem" autocomplete="off">
+        <button type="submit" class="primary">Enviar</button>
+      </div>
+      <div class="row quick" id="quick">
+        <button type="button" data-cmd="!despertar">!despertar</button>
+        <button type="button" data-cmd="!cacar">!cacar</button>
+        <button type="button" data-cmd="!status">!status</button>
+        <button type="button" data-cmd="!reavaliar">!reavaliar</button>
+        <button type="button" data-cmd="!ranking">!ranking</button>
+        <button type="button" data-cmd="!ranking eu">!ranking eu</button>
+        <button type="button" data-cmd="!titulos">!titulos</button>
+        <button type="button" data-cmd="!temporada">!temporada</button>
+        <button type="button" data-cmd="!ajuda">!ajuda</button>
+      </div>
+      <div class="row quick">
+        <button type="button" data-cmd="!loja">!loja</button>
+        <button type="button" data-cmd="!comprar pocao">!comprar pocao</button>
+        <button type="button" data-cmd="!usar pocao">!usar pocao</button>
+        <button type="button" data-cmd="!inventario">!inventario</button>
+        <button type="button" id="give-gold">+100 ouro (teste)</button>
+      </div>
+    </form>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>Terminal do streamer</h2>
+      <p class="hint" style="margin:0 0 10px">No bot de verdade estes comandos só funcionam digitados no terminal onde ele roda. O chat não consegue usar.</p>
+      <div class="row quick">
+        <button type="button" data-admin="pausar">/pausar</button>
+        <button type="button" data-admin="retomar">/retomar</button>
+        <button type="button" data-admin="encerrar-temporada">/encerrar-temporada</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Tempo</h2>
+      <div class="season" id="season">Carregando…</div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" data-advance="180000">+3 min (cooldown)</button>
+        <button type="button" data-advance="1200000">+20 min (lesão/reavaliação)</button>
+        <button type="button" data-advance="86400000">+1 dia</button>
+        <button type="button" data-advance="season">Fim da temporada</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="danger" id="reset">Resetar tudo</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Caçadores da temporada</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Nome</th><th>Classe</th><th>Rank</th><th>Nv</th><th>XP</th><th>Ouro</th><th>Poções</th><th>Situação</th></tr>
+          </thead>
+          <tbody id="hunters"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="hunters-empty">Ninguém despertou ainda. Envie !despertar.</p>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $('log');
+  let lastState = null;
+
+  function line(kind, who, text) {
+    const div = document.createElement('div');
+    div.className = `line ${kind}`;
+    if (who) {
+      const w = document.createElement('span');
+      w.className = 'who';
+      w.textContent = who;
+      div.append(w);
+    }
+    div.append(document.createTextNode(text));
+    log.append(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function fmt(ms) {
+    const s = Math.ceil(ms / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d) return `${d}d ${h}h`;
+    if (h) return `${h}h ${m}min`;
+    return `${m}min ${s % 60}s`;
+  }
+
+  function render(state) {
+    lastState = state;
+    const season = $('season');
+    season.textContent = '';
+    const parts = [
+      ['Temporada', state.season.number],
+      ['termina em', fmt(state.season.endsInMs)],
+      ['relógio adiantado', state.offsetMs ? fmt(state.offsetMs) : 'não'],
+    ];
+    for (const [label, value] of parts) {
+      const span = document.createElement('span');
+      span.append(`${label} `);
+      const b = document.createElement('b');
+      b.textContent = value;
+      span.append(b);
+      season.append(span);
+    }
+    if (state.paused) {
+      const p = document.createElement('span');
+      p.className = 'paused';
+      p.textContent = 'JOGO PAUSADO';
+      season.append(p);
+    }
+
+    const tbody = $('hunters');
+    tbody.textContent = '';
+    state.hunters.forEach((h, i) => {
+      const tr = document.createElement('tr');
+      const cells = [
+        i + 1,
+        h.title ? `[${h.title}] ${h.name}` : h.name,
+        h.classLabel,
+        h.rank,
+        h.level,
+        h.xpToNext === null ? `${h.xp} (guardado)` : `${h.xp}/${h.xpToNext}`,
+        h.gold,
+        h.potions,
+        h.status,
+      ];
+      cells.forEach((value, idx) => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        if (idx === 3) td.className = 'rank';
+        if (idx === 8) td.className = 'status';
+        tr.append(td);
+      });
+      tbody.append(tr);
+    });
+    $('hunters-empty').hidden = state.hunters.length > 0;
+  }
+
+  async function api(path, body) {
+    const res = await fetch(path, body === undefined ? undefined : {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+    return data;
+  }
+
+  async function refresh() {
+    try {
+      render(await api('/api/state'));
+    } catch (err) {
+      line('err', '', `Não consegui falar com o servidor: ${err.message}`);
+    }
+  }
+
+  // Envios em fila: cada mensagem espera a resposta da anterior, então o chat nunca embaralha.
+  let queue = Promise.resolve();
+  function send(text) {
+    const name = $('name').value.trim();
+    if (!text.trim()) return;
+    queue = queue.then(() => sendNow(name, text));
+  }
+
+  function sendAdmin(action) {
+    queue = queue.then(async () => {
+      line('user mod', 'terminal:', `/${action}`);
+      try {
+        const r = await api('/api/admin', { action });
+        for (const reply of r.replies) line('bot', 'bot:', reply);
+      } catch (err) {
+        line('err', '', err.message);
+      }
+      await refresh();
+    });
+  }
+
+  async function sendNow(name, text) {
+    line('user', `${name}:`, text);
+    try {
+      const r = await api('/api/command', { name, text });
+      if (r.ignored) line('sys', '', '(não é um comando do jogo; o bot ignora)');
+      else if (r.replies.length === 0) line('sys', '', '(o bot não respondeu: comando repetido, aviso já dado ou jogo pausado)');
+      for (const reply of r.replies) line('bot', 'bot:', reply);
+    } catch (err) {
+      line('err', '', err.message);
+    }
+    await refresh();
+  }
+
+  $('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = $('text').value;
+    $('text').value = '';
+    send(text);
+    $('text').focus();
+  });
+
+  document.querySelectorAll('[data-cmd]').forEach((btn) => {
+    btn.addEventListener('click', () => send(btn.dataset.cmd));
+  });
+
+  document.querySelectorAll('[data-admin]').forEach((btn) => {
+    btn.addEventListener('click', () => sendAdmin(btn.dataset.admin));
+  });
+
+  $('give-gold').addEventListener('click', () => {
+    const name = $('name').value.trim();
+    queue = queue.then(async () => {
+      try {
+        render(await api('/api/give-gold', { name, amount: 100 }));
+        line('sys', '', `💰 +100 ouro para ${name} (só na bancada de teste)`);
+      } catch (err) {
+        line('err', '', err.message);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-advance]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ms = btn.dataset.advance === 'season'
+        ? Math.max(1000, (lastState?.season.endsInMs ?? 0) + 1000)
+        : Number(btn.dataset.advance);
+      try {
+        render(await api('/api/advance', { ms }));
+        line('sys', '', `⏩ relógio adiantado em ${fmt(ms)}`);
+      } catch (err) {
+        line('err', '', err.message);
+      }
+    });
+  });
+
+  $('reset').addEventListener('click', async () => {
+    try {
+      render(await api('/api/reset', {}));
+      log.textContent = '';
+      line('sys', '', 'Tudo resetado: banco de teste apagado e relógio de volta ao normal.');
+    } catch (err) {
+      line('err', '', err.message);
+    }
+  });
+
+  line('sys', '', 'Escolha um nome e mande !despertar. Troque o nome para simular outra pessoa no chat.');
+  refresh();
+})();
+</script>
+</body>
+</html>

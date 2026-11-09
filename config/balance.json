@@ -1,0 +1,49 @@
+{
+  "levelCaps": [5, 10, 15, 20, 25, 30, 40],
+  "xpCurve": { "base": 20, "perLevel": 10 },
+  "hunt": {
+    "cooldownMs": 180000,
+    "injuryMs": 600000,
+    "monsterRankChances": { "lower": 0.15, "same": 0.7, "higher": 0.15 },
+    "xpByRank": [10, 15, 22, 32, 45, 60, 80],
+    "goldByRank": [3, 5, 8, 12, 18, 25, 35],
+    "difficultyByRank": [7, 13, 20, 28, 35, 43, 50],
+    "baseInjuryChance": 0.5,
+    "injuryPerVit": 0.03,
+    "minInjuryChance": 0.1
+  },
+  "reevaluation": {
+    "successChance": 0.7,
+    "failBlockMs": 1200000,
+    "reawakenChance": 0.01,
+    "reawakenJump": 2
+  },
+  "season": { "durationDays": 14, "hallOfFameSize": 10 },
+  "chat": { "messageIntervalMs": 1600, "duplicateWindowMs": 2000 },
+  "shop": {
+    "maxPerPurchase": 10,
+    "items": {
+      "pocao": {
+        "label": "Poção de Cura",
+        "description": "zera descanso, lesão e reavaliação",
+        "priceMultiplier": 2.5
+      }
+    }
+  },
+  "classes": {
+    "guerreiro": { "label": "Guerreiro", "primary": "FOR", "base": 8, "growth": 1.5, "vit": 6, "bonusVsHigherRank": 2, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
+    "mago": { "label": "Mago", "primary": "INT", "base": 7, "growth": 1.8, "vit": 3, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
+    "assassino": { "label": "Assassino", "primary": "AGI", "base": 8, "growth": 1.5, "vit": 4, "bonusVsHigherRank": 0, "critMin": 18, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
+    "curandeiro": { "label": "Curandeiro", "primary": "INT", "base": 7, "growth": 1.4, "vit": 5, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": true, "fixedInjuryChance": null, "lossXpFraction": 0.5 },
+    "tanque": { "label": "Tanque", "primary": "VIT", "base": 8, "growth": 1.4, "vit": 10, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": false, "fixedInjuryChance": 0.1, "lossXpFraction": 0.25 }
+  },
+  "monsters": [
+    ["Goblin", "Rato Gigante", "Slime Ácido", "Morcego das Cavernas"],
+    ["Lobo de Gelo", "Goblin Arqueiro", "Aranha Venenosa", "Esqueleto Soldado"],
+    ["Orc Guerreiro", "Ghoul", "Golem de Barro", "Harpia"],
+    ["Ogro", "Cavaleiro Sem Cabeça", "Lagarto de Fogo", "Xamã Orc"],
+    ["Troll da Montanha", "Wyvern", "Lich Aprendiz", "Minotauro"],
+    ["Hidra", "Cavaleiro da Morte", "Gigante de Gelo", "Quimera"],
+    ["Dragão Ancestral", "Rei Demônio", "Titã de Pedra", "Leviatã"]
+  ]
+}

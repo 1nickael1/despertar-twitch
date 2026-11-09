@@ -1,0 +1,33 @@
+{
+  "name": "despertar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "dev:console": "tsx src/main.ts --console",
+    "dev:web": "tsx src/web/main.ts",
+    "sim": "tsx scripts/sim.ts",
+    "token": "tsx scripts/token.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.10",
+    "tmi.js": "^1.8.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.6",
+    "@types/tmi.js": "^1.8.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
