@@ -1,24 +1,42 @@
+import { isPortalType, type PortalType } from '../core/types';
+
 /**
  * Comandos de administração. Chegam SÓ pelo terminal onde o bot roda (nunca pelo chat):
- * quem não está no PC do streamer não tem como pausar ou encerrar a temporada.
+ * quem não está no PC do streamer não tem como pausar, encerrar a temporada ou abrir portal.
  */
-export type AdminAction = 'pausar' | 'retomar' | 'encerrar-temporada';
+export type AdminCommand =
+  | { action: 'pausar' }
+  | { action: 'retomar' }
+  | { action: 'encerrar-temporada' }
+  | { action: 'portal'; portal: PortalType | null };
 
-export const ADMIN_ACTIONS: readonly AdminAction[] = ['pausar', 'retomar', 'encerrar-temporada'];
+export type AdminAction = AdminCommand['action'];
 
-export const ADMIN_HELP = 'Comandos do terminal: /pausar · /retomar · /encerrar-temporada';
+export const ADMIN_HELP =
+  'Comandos do terminal: /pausar · /retomar · /encerrar-temporada · /portal [azul|vermelho|quebra]';
 
 export function isAdminLine(line: string): boolean {
   return line.trim().startsWith('/');
 }
 
-/** "/pausar", "/retomar" ou "/encerrar-temporada" (sem diferenciar maiúsculas). */
-export function parseAdminLine(line: string): AdminAction | null {
+/** "/pausar", "/portal", "/portal vermelho"... (sem diferenciar maiúsculas). */
+export function parseAdminLine(line: string): AdminCommand | null {
   const trimmed = line.trim().toLowerCase();
   if (!trimmed.startsWith('/')) return null;
-  return ADMIN_ACTIONS.find((a) => a === trimmed.slice(1)) ?? null;
+  const [head = '', ...rest] = trimmed.slice(1).split(/\s+/);
+  const arg = rest.join(' ');
+  return toAdminCommand(head, arg === '' ? undefined : arg);
 }
 
-export function isAdminAction(value: unknown): value is AdminAction {
-  return typeof value === 'string' && (ADMIN_ACTIONS as readonly string[]).includes(value);
+/** Monta o comando a partir de ação + argumento. Usado pelo terminal e pela tela local. */
+export function toAdminCommand(action: unknown, arg: unknown): AdminCommand | null {
+  const noArg = arg === undefined || arg === null;
+  if (action === 'pausar' || action === 'retomar' || action === 'encerrar-temporada') {
+    return noArg ? { action } : null;
+  }
+  if (action === 'portal') {
+    if (noArg) return { action, portal: null };
+    return isPortalType(arg) ? { action, portal: arg } : null;
+  }
+  return null;
 }

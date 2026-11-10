@@ -19,6 +19,12 @@ describe('parseCommand', () => {
     expect(parseCommand('!ranking eu')).toEqual({ kind: 'ranking', self: true });
   });
 
+  it('raid e atacar', () => {
+    expect(parseCommand('!raid')).toEqual({ kind: 'raid' });
+    expect(parseCommand('!RAID')).toEqual({ kind: 'raid' });
+    expect(parseCommand('!atacar')).toEqual({ kind: 'atacar' });
+  });
+
   it('títulos', () => {
     expect(parseCommand('!titulos')).toEqual({ kind: 'titulos' });
     expect(parseCommand('!titulo')).toEqual({ kind: 'titulos' });

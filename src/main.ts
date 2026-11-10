@@ -14,7 +14,7 @@ import { describeTwitchEnv, readTwitchEnv } from './config/env';
 import { systemClock } from './core/clock';
 import { mathRng } from './core/rng';
 import { openDatabase, SqliteGameRepository } from './data/sqlite-repository';
-import { GameService } from './game/game-service';
+import { AdminRefusal, GameService } from './game/game-service';
 import { TokenManager } from './twitch/token';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -58,16 +58,17 @@ async function main(): Promise<void> {
       if (!consoleMode && line.trim()) console.log(`[admin] ${ADMIN_HELP}`);
       return;
     }
-    const action = parseAdminLine(line);
-    if (!action) {
+    const cmd = parseAdminLine(line);
+    if (!cmd) {
       console.log(`[admin] comando desconhecido. ${ADMIN_HELP}`);
       return;
     }
     try {
-      for (const reply of game.admin(action)) outbound.enqueue(reply);
-      console.log(`[admin] ok: /${action}`);
+      for (const reply of game.admin(cmd)) outbound.enqueue(reply);
+      console.log(`[admin] ok: ${line.trim()}`);
     } catch (err) {
-      console.error('[admin] erro:', err instanceof Error ? err.message : err);
+      if (err instanceof AdminRefusal) console.log(`[admin] recusado: ${err.message}`);
+      else console.error('[admin] erro:', err instanceof Error ? err.message : err);
     }
   });
 

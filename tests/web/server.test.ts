@@ -41,6 +41,12 @@ describe('tela de teste local', () => {
     expect(r.replies[0]).toContain('pausado');
     expect((await state()).paused).toBe(true);
     expect((await post('/api/admin', { action: 'apagar-tudo' })).status).toBe(400);
+    expect((await post('/api/admin', { action: 'portal', portal: 'roxo' })).status).toBe(400);
+    expect((await post('/api/admin', { action: 'retomar' })).status).toBe(200);
+    // sem ninguém despertado o portal é recusado: 409, e a recusa não vira mensagem de chat
+    const refused = await post('/api/admin', { action: 'portal' });
+    expect(refused.status).toBe(409);
+    expect(((await refused.json()) as { error: string }).error).toMatch(/^Recusado: /);
   });
 
   it('serve a página', async () => {

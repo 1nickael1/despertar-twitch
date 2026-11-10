@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import { rmSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { isAdminAction, type AdminAction } from '../commands/admin';
+import { toAdminCommand, type AdminCommand } from '../commands/admin';
 import { parseCommand } from '../commands/parse';
 import type { Balance } from '../config/balance';
 import type { Clock } from '../core/clock';
@@ -10,7 +10,7 @@ import { sortRanking } from '../core/ranking';
 import { mathRng, type Rng } from '../core/rng';
 import { MAX_RANK, rankLetter, type Hunter } from '../core/types';
 import { openDatabase, SqliteGameRepository } from '../data/sqlite-repository';
-import { GameService } from '../game/game-service';
+import { AdminRefusal, GameService } from '../game/game-service';
 import { fmtDuration } from '../game/messages';
 
 const NAME_PATTERN = /^[A-Za-z0-9_]{1,25}$/;
@@ -69,8 +69,8 @@ export class TestBench {
   }
 
   /** Simula um comando digitado no terminal do bot. */
-  admin(action: AdminAction): { replies: string[] } {
-    return { replies: this.game.admin(action) };
+  admin(cmd: AdminCommand): { replies: string[] } {
+    return { replies: this.game.admin(cmd) };
   }
 
   /** Só na bancada local: dá ouro para testar a loja sem caçar por horas. */
@@ -188,9 +188,15 @@ export function createHandler(bench: TestBench, getIndexHtml: () => string) {
       }
 
       if (req.method === 'POST' && path === '/api/admin') {
-        const { action } = await readJson(req);
-        if (!isAdminAction(action)) throw new HttpError(400, 'Ação de terminal inválida.');
-        return json(res, 200, bench.admin(action));
+        const { action, portal } = await readJson(req);
+        const cmd = toAdminCommand(action, portal);
+        if (!cmd) throw new HttpError(400, 'Ação de terminal inválida.');
+        try {
+          return json(res, 200, bench.admin(cmd));
+        } catch (err) {
+          if (err instanceof AdminRefusal) throw new HttpError(409, `Recusado: ${err.message}`);
+          throw err;
+        }
       }
 
       if (req.method === 'POST' && path === '/api/advance') {

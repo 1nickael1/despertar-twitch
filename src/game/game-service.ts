@@ -1,4 +1,4 @@
-import type { AdminAction } from '../commands/admin';
+import type { AdminCommand } from '../commands/admin';
 import { normalizeText, type Command } from '../commands/parse';
 import type { Balance } from '../config/balance';
 import type { Clock } from '../core/clock';
@@ -26,6 +26,9 @@ export interface GameDeps {
   rng: Rng;
   clock: Clock;
 }
+
+/** Pedido do terminal que não pode ser atendido agora. O motivo vai só para o terminal, nunca ao chat. */
+export class AdminRefusal extends Error {}
 
 const BLOCKED_WHEN_PAUSED = new Set<Command['kind']>(['despertar', 'cacar', 'reavaliar', 'comprar', 'usar']);
 
@@ -102,9 +105,9 @@ export class GameService {
   }
 
   /** Administração. Só o terminal do bot chama isto; nenhum caminho do chat chega aqui. */
-  admin(action: AdminAction): string[] {
+  admin(cmd: AdminCommand): string[] {
     const now = this.deps.clock.now();
-    switch (action) {
+    switch (cmd.action) {
       case 'pausar':
         this.paused = true;
         return [msg.paused()];
@@ -115,6 +118,8 @@ export class GameService {
         const rolled = this.ensureSeason(now);
         return rolled.length > 0 ? rolled : this.rollSeason(this.currentSeason(), now);
       }
+      case 'portal':
+        throw new AdminRefusal('ninguém despertou ainda.');
     }
   }
 

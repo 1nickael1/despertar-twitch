@@ -16,7 +16,9 @@ export type Command =
   | { kind: 'loja' }
   | { kind: 'comprar'; item: string; qty: number }
   | { kind: 'usar'; item: string }
-  | { kind: 'inventario' };
+  | { kind: 'inventario' }
+  | { kind: 'raid' }
+  | { kind: 'atacar' };
 
 // Map (e não objeto literal) para que "!constructor" e afins não casem com o protótipo.
 const ALIASES = new Map<string, string>([
@@ -39,6 +41,8 @@ const ALIASES = new Map<string, string>([
   ['pocao', 'pocao'],
   ['inventario', 'inventario'],
   ['mochila', 'inventario'],
+  ['raid', 'raid'],
+  ['atacar', 'atacar'],
 ]);
 
 export function parseCommand(text: string): Command | null {
@@ -60,6 +64,8 @@ export function parseCommand(text: string): Command | null {
     case 'ajuda':
     case 'loja':
     case 'inventario':
+    case 'raid':
+    case 'atacar':
       return { kind: name };
     case 'ranking':
       return { kind: 'ranking', self: arg === 'eu' };

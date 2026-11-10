@@ -111,11 +111,11 @@ describe('GameService', () => {
   it('pausa pelo terminal bloqueia ações e libera consultas', () => {
     const { game, rng, say, awaken } = setup();
     awaken(ana);
-    expect(game.admin('pausar')[0]).toContain('pausado');
+    expect(game.admin({ action: 'pausar' })[0]).toContain('pausado');
     expect(game.isPaused).toBe(true);
     expect(say(ana, '!cacar')).toEqual([]);
     expect(say(ana, '!status')).toHaveLength(1);
-    expect(game.admin('retomar')[0]).toContain('voltou');
+    expect(game.admin({ action: 'retomar' })[0]).toContain('voltou');
     expect(game.isPaused).toBe(false);
     rng.push(...WIN);
     expect(say(ana, '!cacar')[0]).toContain('venceu');
@@ -139,7 +139,7 @@ describe('GameService', () => {
 
   it('o terminal pode forçar o fim da temporada', () => {
     const { game } = setup();
-    expect(game.admin('encerrar-temporada')[0]).toContain('Temporada 1 encerrada');
+    expect(game.admin({ action: 'encerrar-temporada' })[0]).toContain('Temporada 1 encerrada');
   });
 
   it('títulos: listar, equipar por número e nome, remover', () => {
@@ -240,7 +240,7 @@ describe('GameService', () => {
     const { game, repo, say, awaken } = setup();
     awaken(ana);
     repo.saveHunter({ ...repo.getHunter('u-ana')!, gold: 100 });
-    game.admin('pausar');
+    game.admin({ action: 'pausar' });
     expect(say(ana, '!comprar pocao')).toEqual([]);
     expect(say(ana, '!usar pocao')).toEqual([]);
     expect(say(ana, '!loja')).toHaveLength(1);
@@ -251,7 +251,7 @@ describe('GameService', () => {
     const { game, repo, awaken } = setup();
     awaken(ana);
     repo.setItemQty('u-ana', 'pocao', 3);
-    game.admin('encerrar-temporada');
+    game.admin({ action: 'encerrar-temporada' });
     expect(repo.getItems('u-ana')).toEqual({});
   });
 
