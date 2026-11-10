@@ -88,9 +88,9 @@ describe('GameService', () => {
 
   it('comandos diferentes do mesmo tipo não contam como repetidos', () => {
     const { game, clock } = setup();
-    expect(game.handle(ana, parseCommand('!ranking')!)).toHaveLength(1);
+    expect(game.handle(ana, parseCommand('!ranking')!)).not.toEqual([]);
     clock.advance(500);
-    expect(game.handle(ana, parseCommand('!ranking eu')!)).toHaveLength(1);
+    expect(game.handle(ana, parseCommand('!ranking eu')!)).not.toEqual([]);
   });
 
   it('reavaliar abaixo do teto explica o nível necessário', () => {
@@ -160,9 +160,9 @@ describe('GameService', () => {
     awaken(ana);
     repo.saveHunter({ ...repo.getHunter('u-ana')!, rank: 2 });
     awaken(bia, CLASS_MAGO);
-    const top = say(ana, '!ranking')[0];
-    expect(top).toContain('1. ana');
-    expect(top).toContain('2. bia');
+    const top = say(ana, '!ranking');
+    expect(top[1]).toBe('1º ana — Rank D · Nv 1 · 0 XP');
+    expect(top[2]).toBe('2º bia — Rank F · Nv 1 · 0 XP');
     expect(say(bia, '!ranking eu')[0]).toContain('2º de 2');
   });
 

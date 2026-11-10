@@ -1,5 +1,6 @@
 import type { HuntOutcome } from '../core/combat';
-import { rankLetter } from '../core/types';
+import type { RaidReward, RoundReport } from '../core/raid';
+import { rankLetter, type PortalType } from '../core/types';
 
 export function fmtDuration(ms: number): string {
   const total = Math.ceil(ms / 1000);
@@ -28,11 +29,24 @@ export interface RankingEntry {
   title: string | null;
   rank: number;
   level: number;
+  xp: number;
 }
 
 const at = (name: string) => `@${name}`;
 const titled = (title: string | null) => (title ? `[${title}] ` : '');
 const R = rankLetter;
+
+const PORTAL_LABEL: Record<PortalType, string> = {
+  azul: '🔵 PORTAL AZUL',
+  vermelho: '🔴 PORTAL VERMELHO',
+  quebra: '⚠️ QUEBRA DE PORTAL',
+};
+const PORTAL_RULE: Record<PortalType, string> = {
+  azul: 'Raid normal.',
+  vermelho: 'Ninguém sai até acabar; quem terminar caído perde XP.',
+  quebra: 'Se não limparem a tempo, TODOS os caçadores ficam lesionados!',
+};
+const hunters = (count: number) => `${count} ${count === 1 ? 'caçador' : 'caçadores'}`;
 
 export const msg = {
   notAwakened: (n: string) => `${at(n)} você ainda não despertou! Digite !despertar para entrar no jogo.`,
@@ -66,11 +80,14 @@ export const msg = {
   status: (n: string, v: StatusView) =>
     `${at(n)} ${titled(v.title)}${v.classLabel} Rank ${R(v.rank)} · Nv ${v.level} (${v.xpText}) · ${v.gold} ouro · ${v.state}`,
 
-  ranking: (seasonNumber: number, entries: RankingEntry[]) =>
+  /** Uma mensagem por colocado (a Twitch não aceita quebra de linha). */
+  ranking: (seasonNumber: number, entries: RankingEntry[]): string[] =>
     entries.length === 0
-      ? `🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`
-      : `🏆 T${seasonNumber}: ` +
-        entries.map((e, i) => `${i + 1}. ${titled(e.title)}${e.name} (${R(e.rank)}·${e.level})`).join(' '),
+      ? [`🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`]
+      : [
+          `🏆 Ranking da Temporada ${seasonNumber} (ordem: rank, nível, XP)`,
+          ...entries.map((e, i) => `${i + 1}º ${titled(e.title)}${e.name} — Rank ${R(e.rank)} · Nv ${e.level} · ${e.xp} XP`),
+        ],
   rankingSelf: (n: string, position: number, total: number) =>
     `${at(n)} você está em ${position}º de ${total} na temporada.`,
 
@@ -113,8 +130,58 @@ export const msg = {
     `${at(n)} 🎒 ${gold} ouro · ` +
     (items.length > 0 ? items.map((i) => `${i.label} ×${i.qty}`).join(' · ') : 'nenhum item'),
 
+  portalOpened: (type: PortalType, boss: string, hp: number, entryMs: number) =>
+    `${PORTAL_LABEL[type]} abriu! Boss: ${boss} (${hp} HP). ${PORTAL_RULE[type]} Digite !raid em ${fmtDuration(entryMs)} para entrar.`,
+  raidJoined: (n: string, count: number) => `${at(n)} entrou no portal! (${hunters(count)})`,
+  raidNone: (n: string) => `${at(n)} não há portal aberto agora. Fique de olho no chat!`,
+  raidEntryClosed: (n: string) => `${at(n)} a entrada do portal já fechou. Espere o próximo!`,
+  raidInjured: (n: string, ms: number) =>
+    `${at(n)} você está lesionado e não pode entrar (${fmtDuration(ms)}). Uma !usar pocao resolve.`,
+  raidBattleStarted: (boss: string, count: number, rounds: number, roundMs: number, bonusPct: number) =>
+    `⚔️ A batalha contra ${boss} começou! ${hunters(count)} · ${rounds} rodadas de ${fmtDuration(roundMs)} · ` +
+    `use !atacar em cada rodada para +${bonusPct}% de dano`,
+  raidRound: (boss: string, r: RoundReport) => {
+    const parts = [
+      `Rodada ${r.round}/${r.totalRounds}: grupo causou ${r.groupDamage} de dano${r.attackers > 0 ? ` (${r.attackers} com !atacar)` : ''}`,
+    ];
+    if (r.crits.length > 0) parts.push(`💥 crítico de ${r.crits.join(', ')}`);
+    parts.push(`${boss}: ${r.hp}/${r.maxHp} HP`);
+    if (r.bossHit) {
+      parts.push(
+        r.bossHit.fell
+          ? `💀 ${r.bossHit.name} caiu!`
+          : r.bossHit.tank
+            ? `🛡️ ${r.bossHit.name} segurou o golpe`
+            : `${r.bossHit.name} desviou do golpe`,
+      );
+    }
+    for (const v of r.revived) parts.push(`✨ ${v.healer} levantou ${v.target}`);
+    return parts.join(' · ');
+  },
+  /** Ranking de dano: uma mensagem por colocado, com o dano que explica a posição. */
+  raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string[] => [
+    `🏆 ${boss} foi derrotado! ${PORTAL_LABEL[type]} limpo. Ranking de dano:`,
+    ...rewards.slice(0, 5).map((r) => `${r.place}º ${r.displayName} — ${r.damage} de dano → +${r.xp} XP, +${r.gold} ouro`),
+    ...(rewards.length > 5 ? [`…e mais ${rewards.length - 5} caçadores também receberam recompensa.`] : []),
+  ],
+  raidDefeat: (type: PortalType, boss: string, hp: number) =>
+    `💨 O tempo acabou: ${boss} sobreviveu com ${hp} HP e o ${PORTAL_LABEL[type]} se fechou.`,
+  raidRedFallen: (entries: { name: string; xp: number }[]) =>
+    `🔴 Quem terminou caído perdeu XP: ${entries.map((e) => `${e.name} (-${e.xp} XP)`).join(' · ')}`,
+  raidBreak: (boss: string, injuryMs: number) =>
+    `⚠️ QUEBRA! ${boss} escapou do portal. Todos os caçadores estão lesionados por ${fmtDuration(injuryMs)}.`,
+  portalClosedEmpty: (type: PortalType) => `${PORTAL_LABEL[type]} se fechou: ninguém entrou.`,
+  raidCancelled: () => '🌀 O portal se fechou sem resultado (raid cancelada).',
+  inRaid: (n: string) => `${at(n)} você está dentro do portal! Caçadas só depois da raid.`,
+  raidRevived: (n: string, label: string, left: number) =>
+    `${at(n)} 🧪 usou ${label} e voltou à batalha! Restam ${left}.`,
+  attackNoRaid: (n: string) => `${at(n)} não há batalha agora. Use !atacar durante uma raid.`,
+  attackNotIn: (n: string) => `${at(n)} você não está nesta raid. Entre com !raid quando o próximo portal abrir.`,
+  attackNotStarted: (n: string) => `${at(n)} a batalha ainda não começou. Espere a entrada fechar.`,
+  attackDown: (n: string) => `${at(n)} você caiu! Só volta à luta com um Curandeiro ou !usar pocao.`,
+
   paused: () => '⏸️ O jogo foi pausado.',
   resumed: () => '▶️ O jogo voltou! Bora caçar.',
   help: () =>
-    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario',
+    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario · !raid · !atacar',
 };

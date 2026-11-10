@@ -46,13 +46,60 @@ describe('msg', () => {
     expect(t).toBe('@ana [Top 1 · T1] Assassino Rank E · Nv 7 (40/90 XP) · 32 ouro · ✅ pronto para caçar');
   });
 
-  it('ranking vazio e preenchido', () => {
-    expect(msg.ranking(1, [])).toContain('ninguém');
-    const t = msg.ranking(1, [
-      { name: 'ana', title: null, rank: 3, level: 17 },
-      { name: 'bia', title: 'Rank S · T1', rank: 2, level: 12 },
+  it('ranking: uma mensagem por colocado, com a pontuação que explica a posição', () => {
+    expect(msg.ranking(1, [])).toEqual([expect.stringContaining('ninguém')]);
+    expect(
+      msg.ranking(1, [
+        { name: 'ana', title: null, rank: 3, level: 17, xp: 35 },
+        { name: 'bia', title: 'Rank S · T1', rank: 2, level: 12, xp: 80 },
+      ]),
+    ).toEqual([
+      '🏆 Ranking da Temporada 1 (ordem: rank, nível, XP)',
+      '1º ana — Rank C · Nv 17 · 35 XP',
+      '2º [Rank S · T1] bia — Rank D · Nv 12 · 80 XP',
     ]);
-    expect(t).toBe('🏆 T1: 1. ana (C·17) 2. [Rank S · T1] bia (D·12)');
+  });
+
+  it('portal aberto explica a regra do tipo e o tempo de entrada', () => {
+    expect(msg.portalOpened('azul', 'Goblin', 500, 60_000)).toBe(
+      '🔵 PORTAL AZUL abriu! Boss: Goblin (500 HP). Raid normal. Digite !raid em 1min para entrar.',
+    );
+    expect(msg.portalOpened('vermelho', 'Ogro', 800, 60_000)).toContain('quem terminar caído perde XP');
+    expect(msg.portalOpened('quebra', 'Hidra', 1000, 60_000)).toContain('TODOS os caçadores ficam lesionados');
+  });
+
+  it('resumo da rodada', () => {
+    expect(
+      msg.raidRound('Goblin', {
+        round: 3, totalRounds: 15, groupDamage: 64, attackers: 2, crits: ['edu'], hp: 312, maxHp: 500, won: false,
+        bossHit: { name: 'ana', fell: true, tank: false }, revived: [{ healer: 'cris', target: 'ana' }],
+      }),
+    ).toBe('Rodada 3/15: grupo causou 64 de dano (2 com !atacar) · 💥 crítico de edu · Goblin: 312/500 HP · 💀 ana caiu! · ✨ cris levantou ana');
+    expect(
+      msg.raidRound('Goblin', {
+        round: 1, totalRounds: 15, groupDamage: 20, attackers: 0, crits: [], hp: 480, maxHp: 500, won: false,
+        bossHit: { name: 'bia', fell: false, tank: true }, revived: [],
+      }),
+    ).toBe('Rodada 1/15: grupo causou 20 de dano · Goblin: 480/500 HP · 🛡️ bia segurou o golpe');
+  });
+
+  it('vitória: ranking de dano um por linha', () => {
+    const rw = (place: number, name: string, damage: number, xp: number, gold: number) =>
+      ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0 });
+    expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toEqual([
+      '🏆 Goblin foi derrotado! 🔵 PORTAL AZUL limpo. Ranking de dano:',
+      '1º ana — 50 de dano → +60 XP, +18 ouro',
+      '2º bia — 40 de dano → +45 XP, +13 ouro',
+    ]);
+    const lines = msg.raidVictory('azul', 'Goblin', [1, 2, 3, 4, 5, 6, 7].map((i) => rw(i, `p${i}`, 100 - i, 30, 9)));
+    expect(lines).toHaveLength(7);
+    expect(lines[6]).toBe('…e mais 2 caçadores também receberam recompensa.');
+  });
+
+  it('derrota, quebra e caídos do vermelho', () => {
+    expect(msg.raidDefeat('azul', 'Goblin', 120)).toBe('💨 O tempo acabou: Goblin sobreviveu com 120 HP e o 🔵 PORTAL AZUL se fechou.');
+    expect(msg.raidBreak('Hidra', 600_000)).toBe('⚠️ QUEBRA! Hidra escapou do portal. Todos os caçadores estão lesionados por 10min.');
+    expect(msg.raidRedFallen([{ name: 'bia', xp: 20 }])).toBe('🔴 Quem terminou caído perdeu XP: bia (-20 XP)');
   });
 
   it('lista de títulos marca o equipado', () => {

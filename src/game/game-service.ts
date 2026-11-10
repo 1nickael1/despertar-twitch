@@ -136,7 +136,7 @@ export class GameService {
       case 'ajuda':
         return [msg.help()];
       case 'ranking':
-        return [this.ranking(author, cmd.self)];
+        return this.ranking(author, cmd.self);
       default:
         break;
     }
@@ -319,16 +319,16 @@ export class GameService {
     });
   }
 
-  private ranking(author: Author, self: boolean): string {
+  private ranking(author: Author, self: boolean): string[] {
     const season = this.currentSeason();
     const ranked = sortRanking(this.deps.repo.listHunters().filter((h) => h.seasonId === season.id));
     if (self) {
       const pos = ranked.findIndex((h) => h.userId === author.userId);
-      return pos < 0 ? msg.notAwakened(author.displayName) : msg.rankingSelf(author.displayName, pos + 1, ranked.length);
+      return [pos < 0 ? msg.notAwakened(author.displayName) : msg.rankingSelf(author.displayName, pos + 1, ranked.length)];
     }
     return msg.ranking(
       season.number,
-      ranked.slice(0, 5).map((h) => ({ name: h.displayName, title: this.titleLabel(h), rank: h.rank, level: h.level })),
+      ranked.slice(0, 5).map((h) => ({ name: h.displayName, title: this.titleLabel(h), rank: h.rank, level: h.level, xp: h.xp })),
     );
   }
 
