@@ -21,7 +21,10 @@ export type Command =
   | { kind: 'raid' }
   | { kind: 'atacar' }
   | { kind: 'forjar'; slot: EquipmentSlot | null; rank: number | null }
-  | { kind: 'equipar'; arg: string };
+  | { kind: 'equipar'; arg: string }
+  | { kind: 'duelo'; target: string | null; bet: number | null }
+  | { kind: 'aceitar' }
+  | { kind: 'recusar' };
 
 // Map (e não objeto literal) para que "!constructor" e afins não casem com o protótipo.
 const ALIASES = new Map<string, string>([
@@ -49,6 +52,9 @@ const ALIASES = new Map<string, string>([
   ['forjar', 'forjar'],
   ['forja', 'forjar'],
   ['equipar', 'equipar'],
+  ['duelo', 'duelo'],
+  ['aceitar', 'aceitar'],
+  ['recusar', 'recusar'],
 ]);
 
 export function parseCommand(text: string): Command | null {
@@ -72,6 +78,8 @@ export function parseCommand(text: string): Command | null {
     case 'inventario':
     case 'raid':
     case 'atacar':
+    case 'aceitar':
+    case 'recusar':
       return { kind: name };
     case 'ranking':
       return { kind: 'ranking', self: arg === 'eu' };
@@ -95,6 +103,14 @@ export function parseCommand(text: string): Command | null {
     }
     case 'equipar':
       return { kind: 'equipar', arg: argRaw };
+    case 'duelo': {
+      // "!duelo @bia 20": alvo (com ou sem @) e aposta opcional (inteiro ≥ 0).
+      const [rawTarget, rawBet, ...extra] = argRaw ? argRaw.split(/\s+/) : [];
+      const target = rawTarget ? normalizeText(rawTarget.replace(/^@/, '')) : '';
+      const bet = rawBet === undefined ? 0 : /^\d+$/.test(rawBet) ? Number(rawBet) : null;
+      if (!target || bet === null || extra.length > 0) return { kind: 'duelo', target: null, bet: null };
+      return { kind: 'duelo', target, bet };
+    }
     case 'pocao':
       return { kind: 'usar', item: 'pocao' };
     default:

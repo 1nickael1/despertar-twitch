@@ -19,6 +19,16 @@ describe('parseCommand', () => {
     expect(parseCommand('!ranking eu')).toEqual({ kind: 'ranking', self: true });
   });
 
+  it('duelo, aceitar e recusar', () => {
+    expect(parseCommand('!duelo @Bia 20')).toEqual({ kind: 'duelo', target: 'bia', bet: 20 });
+    expect(parseCommand('!duelo bia')).toEqual({ kind: 'duelo', target: 'bia', bet: 0 });
+    for (const bad of ['!duelo', '!duelo @bia abc', '!duelo @bia -5', '!duelo @bia 5 x', '!duelo @']) {
+      expect(parseCommand(bad)).toEqual({ kind: 'duelo', target: null, bet: null });
+    }
+    expect(parseCommand('!aceitar')).toEqual({ kind: 'aceitar' });
+    expect(parseCommand('!RECUSAR')).toEqual({ kind: 'recusar' });
+  });
+
   it('forjar e equipar', () => {
     expect(parseCommand('!forjar arma')).toEqual({ kind: 'forjar', slot: 'arma', rank: null });
     expect(parseCommand('!FORJAR Armadura e')).toEqual({ kind: 'forjar', slot: 'armadura', rank: 1 });

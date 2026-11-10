@@ -1,5 +1,6 @@
 import { MAX_MESSAGE_LENGTH } from '../chat/outbound-queue';
 import type { HuntOutcome } from '../core/combat';
+import type { DuelResult } from '../core/duel';
 import type { EquipmentItem } from '../core/equipment';
 import type { RaidReward, RoundReport } from '../core/raid';
 import { rankLetter, type PortalType } from '../core/types';
@@ -278,8 +279,36 @@ export const msg = {
   attackNotStarted: (n: string) => `${at(n)} a batalha ainda não começou. Espere a entrada fechar.`,
   attackDown: (n: string) => `${at(n)} você caiu! Só volta à luta com um Curandeiro ou !usar pocao.`,
 
+  duelUsage: (n: string) => `${at(n)} use: !duelo @nome [ouro] (ex.: !duelo @bia 20)`,
+  duelSelf: (n: string) => `${at(n)} você não pode duelar consigo mesmo.`,
+  duelNoTarget: (n: string, target: string) => `${at(n)} ${target} ainda não despertou.`,
+  duelInRaid: (n: string) => `${at(n)} ninguém duela de dentro de um portal. Espere a raid acabar.`,
+  duelCooldown: (n: string, ms: number) => `${at(n)} você acabou de duelar. Pode desafiar de novo em ${fmtDuration(ms)}.`,
+  duelTargetCooldown: (n: string, target: string, ms: number) =>
+    `${at(n)} ${target} acabou de duelar. Tente de novo em ${fmtDuration(ms)}.`,
+  duelPending: (n: string) => `${at(n)} já existe um desafio pendente com um de vocês. Espere a resposta.`,
+  duelNoGold: (n: string, who: string, stake: number) => `${at(n)} ${who} não tem ${stake} ouro para apostar.`,
+  duelChallenge: (challenger: string, target: string, stake: number, gapHonor: boolean, acceptMs: number) =>
+    `⚔️ ${at(challenger)} desafiou ${at(target)} para um duelo ` +
+    `${stake > 0 ? `valendo ${stake} ouro` : gapHonor ? 'só pela honra (2+ ranks de diferença)' : 'só pela honra'}! ` +
+    `${at(target)}: !aceitar ou !recusar (${fmtDuration(acceptMs)})`,
+  duelNone: (n: string) => `${at(n)} você não tem nenhum desafio para responder.`,
+  duelRefused: (target: string, challenger: string) => `${at(challenger)} ${target} recusou o duelo.`,
+  duelExpired: (challenger: string, target: string) => `⌛ O desafio de ${challenger} para ${target} expirou.`,
+  duelCancelledRaid: (c: string, t: string) => `⚔️ Duelo entre ${c} e ${t} cancelado: alguém está dentro de um portal.`,
+  duelCancelledGold: (c: string, t: string, stake: number) =>
+    `⚔️ Duelo entre ${c} e ${t} cancelado: alguém não tem mais ${stake} ouro.`,
+  duelResult: (c: string, t: string, stake: number, r: DuelResult) => {
+    const rounds = r.rounds.map((x, i) => `R${i + 1}: ${c} ${x.challenger} × ${x.target} ${t}`).join(' · ');
+    const [winner, won, lost] = r.winner === 'challenger' ? [c, r.challengerWins, r.targetWins] : [t, r.targetWins, r.challengerWins];
+    return (
+      `⚔️ DUELO ${c} × ${t} (${stake > 0 ? `${stake} ouro` : 'só pela honra'}) · ${rounds} · ` +
+      `🏆 ${winner} venceu por ${won}×${lost}${stake > 0 ? ` e levou ${stake * 2} ouro` : ''}!`
+    );
+  },
+
   paused: () => '⏸️ O jogo foi pausado.',
   resumed: () => '▶️ O jogo voltou! Bora caçar.',
   help: () =>
-    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario · !raid · !atacar · !forjar arma|armadura · !equipar <n>',
+    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario · !raid · !atacar · !forjar arma|armadura · !equipar <n> · !duelo @nome [ouro]',
 };

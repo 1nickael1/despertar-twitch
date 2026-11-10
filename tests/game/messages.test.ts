@@ -171,6 +171,28 @@ describe('msg', () => {
     expect(msg.help()).toContain('!equipar');
   });
 
+  it('duelo: desafio, resultado e ajuda', () => {
+    expect(msg.duelChallenge('ana', 'bia', 20, false, 60_000)).toBe(
+      '⚔️ @ana desafiou @bia para um duelo valendo 20 ouro! @bia: !aceitar ou !recusar (1min)',
+    );
+    expect(msg.duelChallenge('ana', 'caio', 0, true, 60_000)).toContain('só pela honra (2+ ranks de diferença)');
+    expect(msg.duelChallenge('ana', 'bia', 0, false, 60_000)).toContain('duelo só pela honra!');
+    const result = {
+      rounds: [{ challenger: 23, target: 19 }, { challenger: 15, target: 22 }, { challenger: 26, target: 18 }],
+      challengerWins: 2,
+      targetWins: 1,
+      winner: 'challenger' as const,
+    };
+    expect(msg.duelResult('ana', 'bia', 20, result)).toBe(
+      '⚔️ DUELO ana × bia (20 ouro) · R1: ana 23 × 19 bia · R2: ana 15 × 22 bia · R3: ana 26 × 18 bia · 🏆 ana venceu por 2×1 e levou 40 ouro!',
+    );
+    const honor = msg.duelResult('ana', 'bia', 0, { ...result, winner: 'target', challengerWins: 1, targetWins: 2 });
+    expect(honor).toContain('(só pela honra)');
+    expect(honor).toContain('🏆 bia venceu por 2×1!');
+    expect(msg.help()).toContain('!duelo @nome [ouro]');
+    expect(msg.help().length).toBeLessThanOrEqual(500);
+  });
+
   it('derrota, quebra e caídos do vermelho', () => {
     expect(msg.raidDefeat('azul', 'Goblin', 120)).toBe('💨 O tempo acabou: Goblin sobreviveu com 120 HP e o 🔵 PORTAL AZUL se fechou.');
     expect(msg.raidBreak('Hidra', 600_000)).toBe('⚠️ QUEBRA! Hidra escapou do portal. Todos os caçadores estão lesionados por 10min.');
