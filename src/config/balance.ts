@@ -79,6 +79,14 @@ const equipmentSchema = z.object({
   forge: z.object({ fragments: z.number().int().min(1), goldMultiplier: z.number().nonnegative() }),
 });
 
+const duelSchema = z.object({
+  acceptMs: z.number().int().positive(),
+  cooldownMs: z.number().int().nonnegative(),
+  armorDefense: z.object({ comum: z.number().int().nonnegative(), forjada: z.number().int().nonnegative() }),
+  roundsToWin: z.number().int().min(1),
+  fairRankGap: z.number().int().min(0).max(6),
+});
+
 /** Maior múltiplo do ouro base que uma única vitória pode render (crítico dobra). */
 export function maxWinGoldMultiplier(b: { classes: Record<string, { critMin: number | null }> }): number {
   return Object.values(b.classes).some((c) => c.critMin !== null) ? 2 : 1;
@@ -119,6 +127,7 @@ export const balanceSchema = z.object({
   }),
   raid: raidSchema,
   equipment: equipmentSchema,
+  duel: duelSchema,
   classes: z.object({
     guerreiro: classSchema,
     mago: classSchema,

@@ -96,4 +96,17 @@ describe('balance', () => {
     raw.equipment.weapon.priceMultiplier = 2;
     expect(() => parseBalance(raw)).toThrow(/equipment\.weapon\.priceMultiplier/);
   });
+
+  it('tem a seção duel com os valores aprovados', () => {
+    const b = loadBalance(BALANCE_PATH);
+    expect(b.duel.acceptMs).toBe(60_000);
+    expect(b.duel.armorDefense.forjada).toBe(2);
+    expect(b.duel.fairRankGap).toBe(1);
+  });
+
+  it('recusa duelo sem rodada para vencer', () => {
+    const raw = rawBalance();
+    raw.duel.roundsToWin = 0;
+    expect(() => parseBalance(raw)).toThrow(/duel\.roundsToWin/);
+  });
 });

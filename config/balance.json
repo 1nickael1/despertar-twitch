@@ -62,6 +62,13 @@
     "raidTopDamageBonusFragments": 1,
     "forge": { "fragments": 6, "goldMultiplier": 2 }
   },
+  "duel": {
+    "acceptMs": 60000,
+    "cooldownMs": 120000,
+    "armorDefense": { "comum": 1, "forjada": 2 },
+    "roundsToWin": 2,
+    "fairRankGap": 1
+  },
   "classes": {
     "guerreiro": { "label": "Guerreiro", "primary": "FOR", "base": 8, "growth": 1.5, "vit": 6, "bonusVsHigherRank": 2, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
     "mago": { "label": "Mago", "primary": "INT", "base": 7, "growth": 1.8, "vit": 3, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
