@@ -1,5 +1,6 @@
 import type { Balance } from '../config/balance';
 import { chance, pick, rollD20, type Rng } from './rng';
+import { applyXp } from './progression';
 import { injuryChance, primaryStat } from './stats';
 import { PORTAL_TYPES, type ClassId, type Hunter, type PortalType } from './types';
 
@@ -194,4 +195,56 @@ export function resolveRound(raid: Raid, b: Balance, rng: Rng): { raid: Raid; re
     raid: { ...raid, hp, round, participants: parts },
     report: { round, totalRounds: raid.totalRounds, groupDamage, attackers, crits, hp, maxHp: raid.maxHp, won, bossHit, revived },
   };
+}
+
+/** Ranking de dano: maior primeiro; empate fica na ordem de entrada (sort estável). */
+export function rankDamage(raid: Raid): RaidParticipant[] {
+  return [...raid.participants].sort((x, y) => y.damage - x.damage);
+}
+
+export interface RaidReward {
+  userId: string;
+  displayName: string;
+  /** Posição no ranking de dano, a partir de 1. */
+  place: number;
+  damage: number;
+  xp: number;
+  gold: number;
+  /** Portal vermelho: quem terminou caído perde XP. */
+  xpLoss: number;
+}
+
+/** Recompensa = caçada do rank do jogador × tipo × posição. Derrota não paga. */
+export function raidRewards(raid: Raid, won: boolean, b: Balance): RaidReward[] {
+  const r = b.raid;
+  return rankDamage(raid).map((p, i) => {
+    const mult = won ? r.rewardMultiplier[raid.type] * (r.placeMultipliers[i] ?? 1) : 0;
+    const xpLoss = raid.type === 'vermelho' && p.down ? Math.floor(r.redFallXpHunts * b.hunt.xpByRank[p.rank]) : 0;
+    return {
+      userId: p.userId,
+      displayName: p.displayName,
+      place: i + 1,
+      damage: p.damage,
+      xp: Math.floor(b.hunt.xpByRank[p.rank] * mult),
+      gold: Math.floor(b.hunt.goldByRank[p.rank] * mult),
+      xpLoss,
+    };
+  });
+}
+
+/** Aplica ouro e XP líquido. XP negativo sai do XP atual, sem nunca descer de nível. */
+export function applyRaidReward(
+  h: Hunter,
+  reward: Pick<RaidReward, 'xp' | 'gold' | 'xpLoss'>,
+  b: Balance,
+): { hunter: Hunter; levelsGained: number } {
+  const withGold: Hunter = { ...h, gold: h.gold + reward.gold };
+  const net = reward.xp - reward.xpLoss;
+  if (net >= 0) return applyXp(withGold, net, b);
+  return { hunter: { ...withGold, xp: Math.max(0, withGold.xp + net) }, levelsGained: 0 };
+}
+
+/** Quebra de portal: lesão para todos, mantendo a que terminar mais tarde. */
+export function breakPenalty(h: Hunter, now: number, b: Balance): Hunter {
+  return { ...h, injuredUntil: Math.max(h.injuredUntil ?? 0, now + b.raid.breakInjuryMs) };
 }

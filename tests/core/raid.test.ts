@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyRaidReward,
+  breakPenalty,
   joinRaid,
   knockdownChance,
   markAttack,
   openRaid,
+  raidRewards,
+  rankDamage,
   raidDamage,
   resolveRound,
   reviveWithPotion,
   rollPortalType,
   type Raid,
 } from '../../src/core/raid';
-import type { ClassId, Hunter } from '../../src/core/types';
+import type { ClassId, Hunter, PortalType } from '../../src/core/types';
 import { d20, makeHunter, seqRng, testBalance } from '../helpers';
 
 const b = testBalance();
@@ -200,5 +204,62 @@ describe('raid: rodada', () => {
     raid = { ...raid, participants: [{ ...raid.participants[0], down: true, downSinceRound: 1 }] };
     const { report } = resolveRound(raid, b, seqRng([]));
     expect(report).toMatchObject({ groupDamage: 0, bossHit: null, won: false, hp: 500 });
+  });
+});
+
+describe('raid: ranking e recompensas', () => {
+  /** Raid com Guerreiros Rank F e o dano já somado. */
+  const party = (type: PortalType, specs: [string, number, boolean?][]): Raid => ({
+    ...openRaid(type, 'Boss', T0, b),
+    started: true,
+    participants: specs.map(([name, damage, down = false]) => ({
+      userId: name, displayName: name, classId: 'guerreiro', rank: 0, level: 1,
+      damage, down, downSinceRound: down ? 1 : null, attacked: false,
+    })),
+  });
+
+  it('ordena por dano; empate fica com quem entrou primeiro', () => {
+    const raid = party('azul', [['ana', 40], ['bia', 90], ['cris', 40]]);
+    expect(rankDamage(raid).map((p) => p.displayName)).toEqual(['bia', 'ana', 'cris']);
+  });
+
+  it('vitória paga caçada do rank × tipo × posição', () => {
+    const raid = party('azul', [['ana', 50], ['bia', 40], ['cris', 30], ['duda', 20]]);
+    expect(raidRewards(raid, true, b).map((r) => [r.displayName, r.place, r.damage, r.xp, r.gold, r.xpLoss])).toEqual([
+      ['ana', 1, 50, 60, 18, 0],
+      ['bia', 2, 40, 45, 13, 0],
+      ['cris', 3, 30, 37, 11, 0],
+      ['duda', 4, 20, 30, 9, 0],
+    ]);
+  });
+
+  it('vermelho e quebra usam ×5 e ×6', () => {
+    expect(raidRewards(party('vermelho', [['ana', 1]]), true, b)[0]).toMatchObject({ xp: 100, gold: 30 });
+    expect(raidRewards(party('quebra', [['ana', 1]]), true, b)[0]).toMatchObject({ xp: 120, gold: 36 });
+  });
+
+  it('derrota não paga; no vermelho quem terminou caído perde 2 caçadas', () => {
+    expect(raidRewards(party('azul', [['ana', 1, true]]), false, b)[0]).toMatchObject({ xp: 0, gold: 0, xpLoss: 0 });
+    const red = raidRewards(party('vermelho', [['ana', 10], ['bia', 5, true]]), false, b);
+    expect(red.map((r) => [r.displayName, r.xp, r.xpLoss])).toEqual([['ana', 0, 0], ['bia', 0, 20]]);
+  });
+
+  it('aplicar: XP sobe nível; perda desconta da recompensa e nunca desce de nível', () => {
+    const h = makeHunter({ level: 1, xp: 0, gold: 5 });
+    expect(applyRaidReward(h, { xp: 60, gold: 18, xpLoss: 0 }, b)).toMatchObject({
+      hunter: { level: 2, xp: 30, gold: 23 },
+      levelsGained: 1,
+    });
+    // 100 − 20 = 80 XP: nível 1→2 (30) e 2→3 (40), sobram 10
+    expect(applyRaidReward(h, { xp: 100, gold: 30, xpLoss: 20 }, b).hunter).toMatchObject({ level: 3, xp: 10 });
+    expect(applyRaidReward(makeHunter({ level: 3, xp: 5 }), { xp: 0, gold: 0, xpLoss: 20 }, b)).toMatchObject({
+      hunter: { level: 3, xp: 0 },
+      levelsGained: 0,
+    });
+  });
+
+  it('quebra: lesão de 10 min, mantendo a mais longa', () => {
+    expect(breakPenalty(makeHunter({ injuredUntil: null }), T0, b).injuredUntil).toBe(T0 + 600_000);
+    expect(breakPenalty(makeHunter({ injuredUntil: T0 + 900_000 }), T0, b).injuredUntil).toBe(T0 + 900_000);
   });
 });
