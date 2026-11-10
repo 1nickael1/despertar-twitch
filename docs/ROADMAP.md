@@ -12,6 +12,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [plans/2026-11-09-despertar-v1.1-loja.md](plans/2026-11-09-despertar-v1.1-loja.md) | Plano executado da v1.1 |
 | [specs/2026-11-09-despertar-v2-portais-design.md](specs/2026-11-09-despertar-v2-portais-design.md) | Spec da v2 (Portais) |
 | [plans/2026-11-09-despertar-v2-portais.md](plans/2026-11-09-despertar-v2-portais.md) | Plano executado da v2 |
+| [specs/2026-11-09-despertar-v3-equipamento-design.md](specs/2026-11-09-despertar-v3-equipamento-design.md) | Spec da v3 (Equipamento e forja) |
 
 ## Status
 
@@ -20,7 +21,8 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v1 — Despertar** | Ranks F→S, 5 classes, `!cacar`, `!reavaliar`, temporadas de 14 dias, títulos, ranking, administração só pelo terminal, renovação automática do token | ✅ no `main` |
 | **v1.1 — Loja** | `!loja`, `!comprar`, `!usar` / `!pocao`, `!inventario`; Poção de Cura (zera descanso, lesão e reavaliação; uma vitória nunca paga uma) | ✅ no `main` |
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
-| **v3 — Equipamento e PvP** | Drops, equipamentos, duelos | ⏳ |
+| **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | 📝 spec escrita, aguardando revisão |
+| **v3.1 — Duelo** | `!duelo @fulano` com aposta, usando o equipamento | ⏳ |
 | **v4 — Overlay** | Tela no OBS | ⏳ |
 
 ## v2 — Portais (raids coletivas)
