@@ -5,12 +5,24 @@ import type { Clock } from '../core/clock';
 import { resolveHunt } from '../core/combat';
 import { createHunter } from '../core/hunter';
 import { isAtCap, levelCap, xpToNext } from '../core/progression';
+import {
+  applyRaidReward,
+  breakPenalty,
+  joinRaid,
+  markAttack,
+  openRaid,
+  raidRewards,
+  resolveRound,
+  reviveWithPotion,
+  rollPortalType,
+  type Raid,
+} from '../core/raid';
 import { sortRanking } from '../core/ranking';
 import { resolveReevaluation } from '../core/reevaluation';
 import { pick, type Rng } from '../core/rng';
 import { closeSeason, newSeason } from '../core/season';
 import { buyItem, findItem, healHunter, itemIds, itemPrice } from '../core/shop';
-import { CLASS_IDS, MAX_RANK, type Hunter, type Season } from '../core/types';
+import { CLASS_IDS, MAX_RANK, type Hunter, type PortalType, type Season } from '../core/types';
 import type { GameRepository } from '../data/repository';
 import { fmtDuration, msg } from './messages';
 
@@ -30,22 +42,56 @@ export interface GameDeps {
 /** Pedido do terminal que não pode ser atendido agora. O motivo vai só para o terminal, nunca ao chat. */
 export class AdminRefusal extends Error {}
 
-const BLOCKED_WHEN_PAUSED = new Set<Command['kind']>(['despertar', 'cacar', 'reavaliar', 'comprar', 'usar']);
+const BLOCKED_WHEN_PAUSED = new Set<Command['kind']>([
+  'despertar',
+  'cacar',
+  'reavaliar',
+  'comprar',
+  'usar',
+  'raid',
+  'atacar',
+]);
 
 export class GameService {
   private paused = false;
   private readonly lastCommandAt = new Map<string, number>();
   private readonly notifiedUntil = new Map<string, number>();
+  /** Raid em andamento. Só em memória: reiniciar o bot cancela a raid. */
+  private raid: Raid | null = null;
+  private nextPortal: number | null = null;
 
   constructor(private readonly deps: GameDeps) {}
 
-  /** Garante uma temporada ativa (e vira a temporada se já acabou). Devolve anúncios. */
+  /** Garante uma temporada ativa (e vira a temporada se já acabou) e agenda o primeiro portal. Devolve anúncios. */
   start(): string[] {
-    return this.ensureSeason(this.deps.clock.now());
+    const now = this.deps.clock.now();
+    this.nextPortal ??= now + this.deps.balance.raid.intervalMs;
+    return this.ensureSeason(now);
   }
 
   get isPaused(): boolean {
     return this.paused;
+  }
+
+  get currentRaid(): Raid | null {
+    return this.raid;
+  }
+
+  get nextPortalAt(): number | null {
+    return this.nextPortal;
+  }
+
+  /** Relógio do jogo: chamado a cada 1 s. Vira temporada, abre portal e resolve rodadas. Devolve anúncios. */
+  tick(): string[] {
+    const now = this.deps.clock.now();
+    const out = this.ensureSeason(now);
+    if (this.paused) return out;
+    if (this.raid) return [...out, ...this.advanceRaid(now)];
+    if (this.nextPortal !== null && now >= this.nextPortal) {
+      if (this.deps.repo.listHunters().length === 0) this.nextPortal = now + this.deps.balance.raid.intervalMs;
+      else out.push(...this.openPortal(null, now));
+    }
+    return out;
   }
 
   /** Comandos vindos do chat. */
@@ -91,7 +137,7 @@ export class GameService {
 
   private rollSeason(current: Season, now: number): string[] {
     const { repo, balance } = this.deps;
-    return repo.transaction(() => {
+    const announcements = repo.transaction(() => {
       const next = repo.createSeason(newSeason(current.number + 1, now, balance));
       const result = closeSeason(repo.listHunters(), current, next.id, balance, now);
       repo.markSeasonClosed(current.id, now);
@@ -102,6 +148,7 @@ export class GameService {
       const podium = result.hallOfFame.slice(0, 3).map((e) => e.displayName);
       return [msg.seasonEnded(current.number, podium), msg.seasonStarted(next.number, next.endsAt - now)];
     });
+    return [...announcements, ...this.cancelRaid(now)];
   }
 
   /** Administração. Só o terminal do bot chama isto; nenhum caminho do chat chega aqui. */
@@ -110,16 +157,17 @@ export class GameService {
     switch (cmd.action) {
       case 'pausar':
         this.paused = true;
-        return [msg.paused()];
+        return [msg.paused(), ...this.cancelRaid(now)];
       case 'retomar':
         this.paused = false;
+        this.nextPortal = now + this.deps.balance.raid.intervalMs;
         return [msg.resumed()];
       case 'encerrar-temporada': {
         const rolled = this.ensureSeason(now);
         return rolled.length > 0 ? rolled : this.rollSeason(this.currentSeason(), now);
       }
       case 'portal':
-        throw new AdminRefusal('ninguém despertou ainda.');
+        return this.openPortal(cmd.portal, now);
     }
   }
 
@@ -164,8 +212,132 @@ export class GameService {
         return [this.useItem(h, cmd.item, now)];
       case 'inventario':
         return [this.inventory(h)];
+      case 'raid':
+        return this.joinRaidCommand(h, now);
+      case 'atacar':
+        return this.attack(h);
       default:
         return [];
+    }
+  }
+
+  // ---------- raid ----------
+
+  private inRaid(userId: string): boolean {
+    return this.raid?.participants.some((p) => p.userId === userId) ?? false;
+  }
+
+  /** Abre um portal agora. Pelo terminal, recusa com AdminRefusal (o motivo não vai ao chat). */
+  private openPortal(type: PortalType | null, now: number): string[] {
+    const { repo, balance: b, rng } = this.deps;
+    if (this.paused) throw new AdminRefusal('o jogo está pausado; use /retomar antes.');
+    if (this.raid) throw new AdminRefusal('já existe um portal aberto.');
+    const hunters = repo.listHunters();
+    if (hunters.length === 0) throw new AdminRefusal('ninguém despertou ainda.');
+    const portalType = type ?? rollPortalType(b, rng);
+    const strongest = Math.max(...hunters.map((h) => h.rank));
+    this.raid = openRaid(portalType, pick(rng, b.monsters[strongest]), now, b);
+    this.nextPortal = null;
+    return [msg.portalOpened(portalType, this.raid.bossName, this.raid.maxHp, b.raid.entryMs)];
+  }
+
+  /** Fecha a entrada e resolve as rodadas que já venceram (todas, se o bot atrasou). */
+  private advanceRaid(now: number): string[] {
+    const b = this.deps.balance;
+    let raid = this.raid!;
+    const out: string[] = [];
+    if (!raid.started) {
+      if (now < raid.battleStartsAt) return [];
+      if (raid.participants.length === 0) return this.finishRaid(raid, false, now);
+      raid = { ...raid, started: true };
+      out.push(
+        msg.raidBattleStarted(
+          raid.bossName,
+          raid.participants.length,
+          raid.totalRounds,
+          b.raid.roundMs,
+          Math.round(b.raid.attackBonus * 100),
+        ),
+      );
+    }
+    while (raid.round < raid.totalRounds && now >= raid.battleStartsAt + (raid.round + 1) * b.raid.roundMs) {
+      const { raid: next, report } = resolveRound(raid, b, this.deps.rng);
+      raid = next;
+      out.push(msg.raidRound(raid.bossName, report));
+      if (report.won) return [...out, ...this.finishRaid(raid, true, now)];
+    }
+    this.raid = raid;
+    if (raid.round >= raid.totalRounds) out.push(...this.finishRaid(raid, false, now));
+    return out;
+  }
+
+  /** Grava recompensas, perdas e lesões numa transação só e agenda o próximo portal. */
+  private finishRaid(raid: Raid, won: boolean, now: number): string[] {
+    const { repo, balance: b } = this.deps;
+    this.raid = null;
+    this.nextPortal = now + b.raid.intervalMs;
+    if (raid.participants.length === 0 && raid.type !== 'quebra') return [msg.portalClosedEmpty(raid.type)];
+    const rewards = raidRewards(raid, won, b);
+    const broke = !won && raid.type === 'quebra';
+    repo.transaction(() => {
+      for (const r of rewards) {
+        const h = repo.getHunter(r.userId);
+        if (h) repo.saveHunter(applyRaidReward(h, r, b).hunter);
+      }
+      if (broke) for (const h of repo.listHunters()) repo.saveHunter(breakPenalty(h, now, b));
+    });
+    const out: string[] = [];
+    if (won) out.push(...msg.raidVictory(raid.type, raid.bossName, rewards));
+    else if (broke) out.push(msg.raidBreak(raid.bossName, b.raid.breakInjuryMs));
+    else out.push(msg.raidDefeat(raid.type, raid.bossName, raid.hp));
+    const fallen = rewards.filter((r) => r.xpLoss > 0);
+    if (fallen.length > 0) out.push(msg.raidRedFallen(fallen.map((r) => ({ name: r.displayName, xp: r.xpLoss }))));
+    return out;
+  }
+
+  /** Pausa e virada de temporada: a raid some sem recompensa e sem penalidade. */
+  private cancelRaid(now: number): string[] {
+    if (!this.raid) return [];
+    this.raid = null;
+    this.nextPortal = now + this.deps.balance.raid.intervalMs;
+    return [msg.raidCancelled()];
+  }
+
+  private joinRaidCommand(h: Hunter, now: number): string[] {
+    if (!this.raid) return this.notifyOnce(`${h.userId}:raid`, this.nextPortal ?? 0, msg.raidNone(h.displayName));
+    const r = joinRaid(this.raid, h, now);
+    if (r.ok) {
+      this.raid = r.raid;
+      return [msg.raidJoined(h.displayName, r.raid.participants.length)];
+    }
+    switch (r.reason) {
+      case 'already':
+        return [];
+      case 'injured':
+        return [msg.raidInjured(h.displayName, h.injuredUntil! - now)];
+      case 'closed':
+        return this.notifyOnce(`${h.userId}:raid`, this.raid.openedAt, msg.raidEntryClosed(h.displayName));
+    }
+  }
+
+  /** !atacar responde só nos erros (e uma vez); quando dá certo, o resumo da rodada conta. */
+  private attack(h: Hunter): string[] {
+    if (!this.raid) return this.notifyOnce(`${h.userId}:atacar`, this.nextPortal ?? 0, msg.attackNoRaid(h.displayName));
+    const r = markAttack(this.raid, h.userId);
+    if (r.ok) {
+      this.raid = r.raid;
+      return [];
+    }
+    const at = this.raid.openedAt;
+    switch (r.reason) {
+      case 'already':
+        return [];
+      case 'not-in-raid':
+        return this.notifyOnce(`${h.userId}:atacar`, at, msg.attackNotIn(h.displayName));
+      case 'not-started':
+        return this.notifyOnce(`${h.userId}:atacar:espera`, at, msg.attackNotStarted(h.displayName));
+      case 'down':
+        return this.notifyOnce(`${h.userId}:atacar:caido`, at, msg.attackDown(h.displayName));
     }
   }
 
@@ -210,6 +382,16 @@ export class GameService {
     const label = b.shop.items[id].label;
     const have = repo.getItems(h.userId)[id] ?? 0;
     if (have < 1) return msg.noItem(h.displayName, label);
+    const revived = this.raid ? reviveWithPotion(this.raid, h.userId) : null;
+    if (revived) {
+      const healed = healHunter(h, now, b).hunter;
+      repo.transaction(() => {
+        repo.saveHunter(healed);
+        repo.setItemQty(h.userId, id, have - 1);
+      });
+      this.raid = revived;
+      return msg.raidRevived(h.displayName, label, have - 1);
+    }
     const r = healHunter(h, now, b);
     if (!r.healed) return msg.nothingToHeal(h.displayName, label);
     repo.transaction(() => {
@@ -256,6 +438,7 @@ export class GameService {
 
   private hunt(h: Hunter, now: number): string[] {
     const b = this.deps.balance;
+    if (this.inRaid(h.userId)) return [msg.inRaid(h.displayName)];
     if (h.injuredUntil !== null && h.injuredUntil > now) {
       return this.notifyOnce(`${h.userId}:injured`, h.injuredUntil, msg.injured(h.displayName, h.injuredUntil - now));
     }
