@@ -72,7 +72,9 @@ async function main(): Promise<void> {
     }
   });
 
+  let ticker: NodeJS.Timeout | undefined;
   process.on('SIGINT', () => {
+    clearInterval(ticker);
     tokens?.stop();
     terminal.close();
     void chat.disconnect().finally(() => {
@@ -92,6 +94,15 @@ async function main(): Promise<void> {
   });
 
   for (const announcement of game.start()) outbound.enqueue(announcement);
+
+  // Relógio do jogo: abre portais e resolve as rodadas mesmo sem ninguém digitar.
+  ticker = setInterval(() => {
+    try {
+      for (const announcement of game.tick()) outbound.enqueue(announcement);
+    } catch (err) {
+      console.error('[jogo] erro no relógio do jogo:', err instanceof Error ? err.message : err);
+    }
+  }, 1_000);
   console.log(`[boot] Despertar rodando (${consoleMode ? 'console' : 'Twitch'}). ${ADMIN_HELP}`);
 }
 

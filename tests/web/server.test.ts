@@ -32,6 +32,8 @@ describe('tela de teste local', () => {
     paused: boolean;
     season: { number: number };
     hunters: { name: string; rank: string }[];
+    announcements: string[];
+    raid: { phase: string; round: number; hp: number } | null;
   };
 
   it('administração só pela rota do terminal, nunca pelo chat', async () => {
@@ -85,13 +87,35 @@ describe('tela de teste local', () => {
     expect((await command('ana', '!cacar')).replies[0]).toContain('venceu');
   });
 
-  it('avançar até o fim da temporada vira a temporada', async () => {
+  it('avançar até o fim da temporada vira a temporada (o relógio do jogo anuncia)', async () => {
     rng.push(0);
     await command('ana', '!despertar');
-    await post('/api/advance', { ms: testBalance().season.durationDays * 86_400_000 });
-    const r = await command('ana', '!temporada');
-    expect(r.replies[0]).toContain('Temporada 1 encerrada');
-    expect((await state()).season.number).toBe(2);
+    rng.push(0, 0); // o relógio do jogo também abre o portal atrasado: tipo e boss
+    const s = (await (await post('/api/advance', { ms: testBalance().season.durationDays * 86_400_000 })).json()) as {
+      season: { number: number };
+      announcements: string[];
+    };
+    expect(s.season.number).toBe(2);
+    expect(s.announcements.join('\n')).toContain('Temporada 1 encerrada');
+    expect(s.announcements.join('\n')).toContain('PORTAL AZUL');
+  });
+
+  it('portal pelo terminal, !raid e rodada aparecem no estado', async () => {
+    rng.push(0);
+    await command('ana', '!despertar');
+    rng.push(0); // boss
+    const opened = (await (await post('/api/admin', { action: 'portal', portal: 'azul' })).json()) as { replies: string[] };
+    expect(opened.replies[0]).toContain('PORTAL AZUL');
+    expect((await post('/api/admin', { action: 'portal', portal: 'azul' })).status).toBe(409);
+    expect((await command('ana', '!raid')).replies[0]).toContain('entrou no portal');
+    rng.push(d20(10), 0.99); // rodada 1: 20 de dano; boss erra
+    const s = (await (await post('/api/advance', { ms: 80_000 })).json()) as {
+      raid: { phase: string; round: number; hp: number };
+      announcements: string[];
+    };
+    expect(s.raid).toMatchObject({ phase: 'batalha', round: 1, hp: 480 });
+    expect(s.announcements.join('\n')).toContain('Rodada 1/15');
+    expect((await state()).announcements).toEqual([]);
   });
 
   it('reset apaga tudo', async () => {

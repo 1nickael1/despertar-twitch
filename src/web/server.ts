@@ -8,7 +8,7 @@ import type { Clock } from '../core/clock';
 import { isAtCap, xpToNext } from '../core/progression';
 import { sortRanking } from '../core/ranking';
 import { mathRng, type Rng } from '../core/rng';
-import { MAX_RANK, rankLetter, type Hunter } from '../core/types';
+import { MAX_RANK, rankLetter, type Hunter, type PortalType } from '../core/types';
 import { openDatabase, SqliteGameRepository } from '../data/sqlite-repository';
 import { AdminRefusal, GameService } from '../game/game-service';
 import { fmtDuration } from '../game/messages';
@@ -30,17 +30,35 @@ export interface HunterView {
   status: string;
 }
 
+export interface RaidView {
+  type: PortalType;
+  bossName: string;
+  hp: number;
+  maxHp: number;
+  phase: 'entrada' | 'batalha';
+  round: number;
+  totalRounds: number;
+  /** Até a entrada fechar (entrada) ou até a próxima rodada (batalha). */
+  nextInMs: number;
+  participants: { name: string; classLabel: string; damage: number; down: boolean }[];
+}
+
 export interface BenchState {
   now: number;
   offsetMs: number;
   paused: boolean;
   season: { number: number; endsInMs: number };
   hunters: HunterView[];
+  /** Anúncios do relógio do jogo desde a última leitura (portal, rodadas, temporada). */
+  announcements: string[];
+  raid: RaidView | null;
+  nextPortalInMs: number | null;
 }
 
 /** Jogo completo com relógio que pode ser adiantado, para testar no navegador. */
 export class TestBench {
   private offsetMs = 0;
+  private pending: string[] = [];
   private readonly clock: Clock = { now: () => Date.now() + this.offsetMs };
   private db!: Database.Database;
   private repo!: SqliteGameRepository;
@@ -91,10 +109,17 @@ export class TestBench {
       for (const suffix of ['', '-wal', '-shm']) rmSync(this.dbFile + suffix, { force: true });
     }
     this.offsetMs = 0;
+    this.pending = [];
     this.open();
   }
 
+  /** Roda o relógio do jogo; os anúncios ficam guardados até a página pedir o estado. */
+  private tick(): void {
+    this.pending.push(...this.game.tick());
+  }
+
   state(): BenchState {
+    this.tick();
     const now = this.clock.now();
     const season = this.repo.getCurrentSeason();
     const hunters = season ? sortRanking(this.repo.listHunters().filter((h) => h.seasonId === season.id)) : [];
@@ -104,6 +129,32 @@ export class TestBench {
       paused: this.game.isPaused,
       season: { number: season?.number ?? 0, endsInMs: season ? Math.max(0, season.endsAt - now) : 0 },
       hunters: hunters.map((h) => this.view(h, now)),
+      announcements: this.pending.splice(0),
+      raid: this.raidView(now),
+      nextPortalInMs: this.game.nextPortalAt === null ? null : Math.max(0, this.game.nextPortalAt - now),
+    };
+  }
+
+  private raidView(now: number): RaidView | null {
+    const raid = this.game.currentRaid;
+    if (!raid) return null;
+    const b = this.balance;
+    const nextAt = raid.started ? raid.battleStartsAt + (raid.round + 1) * b.raid.roundMs : raid.battleStartsAt;
+    return {
+      type: raid.type,
+      bossName: raid.bossName,
+      hp: raid.hp,
+      maxHp: raid.maxHp,
+      phase: raid.started ? 'batalha' : 'entrada',
+      round: raid.round,
+      totalRounds: raid.totalRounds,
+      nextInMs: Math.max(0, nextAt - now),
+      participants: raid.participants.map((p) => ({
+        name: p.displayName,
+        classLabel: b.classes[p.classId].label,
+        damage: p.damage,
+        down: p.down,
+      })),
     };
   }
 

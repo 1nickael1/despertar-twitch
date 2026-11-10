@@ -106,6 +106,7 @@
   @media (max-width: 800px) {
     .app { grid-template-columns: minmax(0, 1fr); }
   }
+  ul.raiders { margin: 8px 0 0; padding-left: 18px; font-family: var(--mono); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -140,6 +141,8 @@
         <button type="button" data-cmd="!comprar pocao">!comprar pocao</button>
         <button type="button" data-cmd="!usar pocao">!usar pocao</button>
         <button type="button" data-cmd="!inventario">!inventario</button>
+        <button type="button" data-cmd="!raid">!raid</button>
+        <button type="button" data-cmd="!atacar">!atacar</button>
         <button type="button" id="give-gold">+100 ouro (teste)</button>
       </div>
     </form>
@@ -153,13 +156,26 @@
         <button type="button" data-admin="pausar">/pausar</button>
         <button type="button" data-admin="retomar">/retomar</button>
         <button type="button" data-admin="encerrar-temporada">/encerrar-temporada</button>
+        <button type="button" data-admin="portal">/portal</button>
+        <button type="button" data-admin="portal" data-portal="azul">/portal azul</button>
+        <button type="button" data-admin="portal" data-portal="vermelho">/portal vermelho</button>
+        <button type="button" data-admin="portal" data-portal="quebra">/portal quebra</button>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>Portal</h2>
+      <div class="season" id="portal">Carregando…</div>
+      <ul class="raiders" id="raiders"></ul>
     </section>
 
     <section class="panel">
       <h2>Tempo</h2>
       <div class="season" id="season">Carregando…</div>
       <div class="row" style="margin-top:12px">
+        <button type="button" data-advance="20000">+20 s (rodada)</button>
+        <button type="button" data-advance="60000">+1 min (entrada)</button>
+        <button type="button" data-advance="1800000">+30 min (próximo portal)</button>
         <button type="button" data-advance="180000">+3 min (cooldown)</button>
         <button type="button" data-advance="1200000">+20 min (lesão/reavaliação)</button>
         <button type="button" data-advance="86400000">+1 dia</button>
@@ -215,6 +231,23 @@
 
   function render(state) {
     lastState = state;
+    for (const a of state.announcements || []) line('bot', 'bot:', a);
+    const portal = $('portal');
+    const raiders = $('raiders');
+    raiders.textContent = '';
+    if (!state.raid) {
+      portal.textContent = state.nextPortalInMs === null ? 'Nenhum portal agendado.' : `Próximo portal em ${fmt(state.nextPortalInMs)}`;
+    } else {
+      const r = state.raid;
+      portal.textContent = r.phase === 'entrada'
+        ? `${r.type.toUpperCase()} · ${r.bossName} · ${r.maxHp} HP · entrada fecha em ${fmt(r.nextInMs)}`
+        : `${r.type.toUpperCase()} · ${r.bossName} · ${r.hp}/${r.maxHp} HP · rodada ${r.round}/${r.totalRounds} · próxima em ${fmt(r.nextInMs)}`;
+      for (const p of r.participants) {
+        const li = document.createElement('li');
+        li.textContent = `${p.down ? '💀' : '⚔️'} ${p.name} (${p.classLabel}) — ${p.damage} de dano`;
+        raiders.append(li);
+      }
+    }
     const season = $('season');
     season.textContent = '';
     const parts = [
@@ -291,11 +324,11 @@
     queue = queue.then(() => sendNow(name, text));
   }
 
-  function sendAdmin(action) {
+  function sendAdmin(action, portal) {
     queue = queue.then(async () => {
-      line('user mod', 'terminal:', `/${action}`);
+      line('user mod', 'terminal:', `/${action}${portal ? ` ${portal}` : ''}`);
       try {
-        const r = await api('/api/admin', { action });
+        const r = await api('/api/admin', portal ? { action, portal } : { action });
         for (const reply of r.replies) line('bot', 'bot:', reply);
       } catch (err) {
         line('err', '', err.message);
@@ -309,6 +342,7 @@
     try {
       const r = await api('/api/command', { name, text });
       if (r.ignored) line('sys', '', '(não é um comando do jogo; o bot ignora)');
+      else if (r.replies.length === 0 && /^!atacar\b/i.test(text.trim())) line('sys', '', '(!atacar fica em silêncio: o bônus aparece no resumo da próxima rodada)');
       else if (r.replies.length === 0) line('sys', '', '(o bot não respondeu: comando repetido, aviso já dado ou jogo pausado)');
       for (const reply of r.replies) line('bot', 'bot:', reply);
     } catch (err) {
@@ -330,7 +364,7 @@
   });
 
   document.querySelectorAll('[data-admin]').forEach((btn) => {
-    btn.addEventListener('click', () => sendAdmin(btn.dataset.admin));
+    btn.addEventListener('click', () => sendAdmin(btn.dataset.admin, btn.dataset.portal));
   });
 
   $('give-gold').addEventListener('click', () => {
@@ -368,6 +402,9 @@
       line('err', '', err.message);
     }
   });
+
+  // Relógio do jogo: a página pergunta o estado a cada 1 s (na mesma fila dos envios, para o chat não embaralhar).
+  setInterval(() => { queue = queue.then(refresh); }, 1000);
 
   line('sys', '', 'Escolha um nome e mande !despertar. Troque o nome para simular outra pessoa no chat.');
   refresh();
