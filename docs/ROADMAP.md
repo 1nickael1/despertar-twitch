@@ -15,6 +15,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [specs/2026-11-09-despertar-v3-equipamento-design.md](specs/2026-11-09-despertar-v3-equipamento-design.md) | Spec da v3 (Equipamento e forja) |
 | [plans/2026-11-09-despertar-v3-equipamento.md](plans/2026-11-09-despertar-v3-equipamento.md) | Plano executado da v3 |
 | [specs/2026-11-09-despertar-v3.1-duelo-design.md](specs/2026-11-09-despertar-v3.1-duelo-design.md) | Spec da v3.1 (Duelo) |
+| [plans/2026-11-09-despertar-v3.1-duelo.md](plans/2026-11-09-despertar-v3.1-duelo.md) | Plano executado da v3.1 |
 
 ## Status
 
@@ -24,7 +25,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v1.1 — Loja** | `!loja`, `!comprar`, `!usar` / `!pocao`, `!inventario`; Poção de Cura (zera descanso, lesão e reavaliação; uma vitória nunca paga uma) | ✅ no `main` |
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
 | **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | ✅ no `main` |
-| **v3.1 — Duelo** | `!duelo @fulano [ouro]`, melhor de 3, aposta só entre ranks próximos | 📝 spec escrita, aguardando revisão |
+| **v3.1 — Duelo** | `!duelo @fulano [ouro]`, melhor de 3, aposta só entre ranks próximos | ✅ no ramo `v3.1-duelo` |
 | **v4 — Overlay** | Tela no OBS | ⏳ |
 
 ## v2 — Portais (raids coletivas)

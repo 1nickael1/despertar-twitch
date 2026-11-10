@@ -3,6 +3,7 @@ import { resolveHunt } from '../src/core/combat';
 import { createHunter } from '../src/core/hunter';
 import { isAtCap, levelCap, rankFloor } from '../src/core/progression';
 import { resolveReevaluation } from '../src/core/reevaluation';
+import { resolveDuel } from '../src/core/duel';
 import { equipmentId, type Quality } from '../src/core/equipment';
 import { joinRaid, markAttack, openRaid, resolveRound } from '../src/core/raid';
 import { chance, createSeededRng } from '../src/core/rng';
@@ -123,3 +124,25 @@ console.table(
     ...Object.fromEntries(PORTAL_TYPES.map((t) => [`${t} ${b.raid.bossHp[t]} HP`, simulateRaid(t, rate)])),
   })),
 );
+
+const DUEL_RUNS = 5000;
+const duelist = (rank: number, level: number, forged = false) => ({
+  ...createHunter(`d${rank}-${level}`, 'd', 'guerreiro', 1, 0),
+  rank,
+  level,
+  weaponId: forged ? equipmentId('arma', rank, 'forjada') : null,
+  armorId: forged ? equipmentId('armadura', rank, 'forjada') : null,
+});
+const duelRate = (a: ReturnType<typeof duelist>, t: ReturnType<typeof duelist>) => {
+  let wins = 0;
+  for (let i = 0; i < DUEL_RUNS; i++) if (resolveDuel(a, t, b, rng).winner === 'challenger') wins++;
+  return pct({ wins, total: DUEL_RUNS });
+};
+console.log(`\n== Duelo (Guerreiros) · ${DUEL_RUNS} duelos por linha · vitória do desafiante ==`);
+console.table([
+  { duelo: 'F nv3 × F nv3', vitória: duelRate(duelist(0, 3), duelist(0, 3)) },
+  { duelo: 'F nv5 × F nv1', vitória: duelRate(duelist(0, 5), duelist(0, 1)) },
+  { duelo: 'E nv5 × F nv5 (1 rank acima)', vitória: duelRate(duelist(1, 5), duelist(0, 5)) },
+  { duelo: 'E nv10 × F nv5', vitória: duelRate(duelist(1, 10), duelist(0, 5)) },
+  { duelo: 'F nv3 forjado × F nv3', vitória: duelRate(duelist(0, 3, true), duelist(0, 3)) },
+]);
