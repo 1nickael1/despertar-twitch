@@ -3,6 +3,7 @@ import { normalizeText, type Command } from '../commands/parse';
 import type { Balance } from '../config/balance';
 import type { Clock } from '../core/clock';
 import { resolveHunt } from '../core/combat';
+import { duelStake, resolveDuel, settleDuel } from '../core/duel';
 import { createHunter } from '../core/hunter';
 import {
   buyEquipment,
@@ -62,6 +63,14 @@ export interface GameDeps {
   clock: Clock;
 }
 
+interface PendingDuel {
+  challengerId: string;
+  targetId: string;
+  /** Aposta efetiva (0 com 2+ ranks de diferença). */
+  stake: number;
+  expiresAt: number;
+}
+
 /** Pedido do terminal que não pode ser atendido agora. O motivo vai só para o terminal, nunca ao chat. */
 export class AdminRefusal extends Error {}
 
@@ -75,6 +84,9 @@ const BLOCKED_WHEN_PAUSED = new Set<Command['kind']>([
   'atacar',
   'forjar',
   'equipar',
+  'duelo',
+  'aceitar',
+  'recusar',
 ]);
 
 export class GameService {
@@ -84,6 +96,9 @@ export class GameService {
   /** Raid em andamento. Só em memória: reiniciar o bot cancela a raid. */
   private raid: Raid | null = null;
   private nextPortal: number | null = null;
+  /** Desafios de duelo esperando resposta, pelo id do desafiado. Só em memória. */
+  private readonly pendingDuels = new Map<string, PendingDuel>();
+  private readonly duelCooldownUntil = new Map<string, number>();
 
   constructor(private readonly deps: GameDeps) {}
 
@@ -110,6 +125,7 @@ export class GameService {
   tick(): string[] {
     const now = this.deps.clock.now();
     const out = this.ensureSeason(now);
+    out.push(...this.expireDuels(now));
     if (this.paused) return out;
     if (this.raid) return [...out, ...this.advanceRaid(now)];
     if (this.nextPortal !== null && now >= this.nextPortal) {
@@ -245,6 +261,12 @@ export class GameService {
         return [this.forge(h, cmd.slot, cmd.rank)];
       case 'equipar':
         return [this.equipCommand(h, cmd.arg)];
+      case 'duelo':
+        return [this.challenge(h, cmd.target, cmd.bet, now)];
+      case 'aceitar':
+        return [this.acceptDuel(h, now)];
+      case 'recusar':
+        return [this.refuseDuel(h)];
       default:
         return [];
     }
@@ -458,6 +480,81 @@ export class GameService {
       equipped: item.id === h.weaponId || item.id === h.armorId,
     }));
     return msg.inventory(h.displayName, h.gold, items, ownedFragments(owned), gear);
+  }
+
+  // ---------- duelo ----------
+
+  private hasPendingDuel(userId: string): boolean {
+    if (this.pendingDuels.has(userId)) return true;
+    for (const d of this.pendingDuels.values()) if (d.challengerId === userId) return true;
+    return false;
+  }
+
+  private duelWait(userId: string, now: number): number {
+    return Math.max(0, (this.duelCooldownUntil.get(userId) ?? 0) - now);
+  }
+
+  private challenge(h: Hunter, targetName: string | null, bet: number | null, now: number): string {
+    const { repo, balance: b } = this.deps;
+    const n = h.displayName;
+    if (targetName === null || bet === null) return msg.duelUsage(n);
+    if (normalizeText(h.displayName) === targetName) return msg.duelSelf(n);
+    const target = repo.listHunters().find((x) => normalizeText(x.displayName) === targetName);
+    if (!target) return msg.duelNoTarget(n, targetName);
+    if (this.inRaid(h.userId) || this.inRaid(target.userId)) return msg.duelInRaid(n);
+    const ownWait = this.duelWait(h.userId, now);
+    if (ownWait > 0) return msg.duelCooldown(n, ownWait);
+    const targetWait = this.duelWait(target.userId, now);
+    if (targetWait > 0) return msg.duelTargetCooldown(n, target.displayName, targetWait);
+    if (this.hasPendingDuel(h.userId) || this.hasPendingDuel(target.userId)) return msg.duelPending(n);
+    const stake = duelStake(h, target, bet, b);
+    if (h.gold < stake) return msg.duelNoGold(n, n, stake);
+    if (target.gold < stake) return msg.duelNoGold(n, target.displayName, stake);
+    this.pendingDuels.set(target.userId, { challengerId: h.userId, targetId: target.userId, stake, expiresAt: now + b.duel.acceptMs });
+    return msg.duelChallenge(n, target.displayName, stake, bet > 0 && stake === 0, b.duel.acceptMs);
+  }
+
+  private acceptDuel(h: Hunter, now: number): string {
+    const { repo, balance: b, rng } = this.deps;
+    const d = this.pendingDuels.get(h.userId);
+    if (!d) return msg.duelNone(h.displayName);
+    this.pendingDuels.delete(h.userId);
+    const challenger = repo.getHunter(d.challengerId);
+    if (!challenger) return msg.duelNone(h.displayName);
+    if (this.inRaid(challenger.userId) || this.inRaid(h.userId)) return msg.duelCancelledRaid(challenger.displayName, h.displayName);
+    if (challenger.gold < d.stake || h.gold < d.stake) return msg.duelCancelledGold(challenger.displayName, h.displayName, d.stake);
+    const result = resolveDuel(challenger, h, b, rng);
+    const [winner, loser] = result.winner === 'challenger' ? [challenger, h] : [h, challenger];
+    const settled = settleDuel(winner, loser, d.stake);
+    repo.transaction(() => {
+      repo.saveHunter(settled.winner);
+      repo.saveHunter(settled.loser);
+    });
+    const until = now + b.duel.cooldownMs;
+    this.duelCooldownUntil.set(challenger.userId, until);
+    this.duelCooldownUntil.set(h.userId, until);
+    return msg.duelResult(challenger.displayName, h.displayName, d.stake, result);
+  }
+
+  private refuseDuel(h: Hunter): string {
+    const d = this.pendingDuels.get(h.userId);
+    if (!d) return msg.duelNone(h.displayName);
+    this.pendingDuels.delete(h.userId);
+    const challenger = this.deps.repo.getHunter(d.challengerId);
+    return msg.duelRefused(h.displayName, challenger?.displayName ?? '?');
+  }
+
+  /** Desafios sem resposta no prazo somem com um aviso. */
+  private expireDuels(now: number): string[] {
+    const out: string[] = [];
+    for (const [targetId, d] of this.pendingDuels) {
+      if (now < d.expiresAt) continue;
+      this.pendingDuels.delete(targetId);
+      const challenger = this.deps.repo.getHunter(d.challengerId);
+      const target = this.deps.repo.getHunter(d.targetId);
+      out.push(msg.duelExpired(challenger?.displayName ?? '?', target?.displayName ?? '?'));
+    }
+    return out;
   }
 
   // ---------- equipamento ----------
