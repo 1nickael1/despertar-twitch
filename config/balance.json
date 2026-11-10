@@ -19,7 +19,11 @@
     "reawakenJump": 2
   },
   "season": { "durationDays": 14, "hallOfFameSize": 10 },
-  "chat": { "messageIntervalMs": 1600, "duplicateWindowMs": 2000 },
+  "chat": {
+    "messageIntervalMs": 1600,
+    "duplicateWindowMs": 2000,
+    "hourlyNotice": "🎨 Curtiu o visual da nossa live? O seu canal também pode ter uma identidade própria! Criamos overlays personalizados e um avatar no mesmo estilo para deixar tudo com a sua cara. Quer o seu? Fale com a gente: contato@niveana.com"
+  },
   "shop": {
     "maxPerPurchase": 10,
     "items": {

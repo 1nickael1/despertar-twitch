@@ -128,6 +128,8 @@ export const balanceSchema = z.object({
   chat: z.object({
     messageIntervalMs: z.number().int().nonnegative(),
     duplicateWindowMs: z.number().int().nonnegative(),
+    /** Aviso mandado na virada de cada hora; vazio desliga. Cabe numa mensagem da Twitch. */
+    hourlyNotice: z.string().max(500).default(''),
   }),
   shop: z.object({
     maxPerPurchase: z.number().int().min(1),

@@ -25,6 +25,15 @@ describe('balance', () => {
     expect(() => parseBalance(raw)).toThrow(/monsterRankChances/);
   });
 
+  it('aviso de hora em hora: opcional e cabe numa mensagem da Twitch', () => {
+    expect(loadBalance(BALANCE_PATH).chat.hourlyNotice.length).toBeGreaterThan(0);
+    const raw = rawBalance();
+    delete raw.chat.hourlyNotice;
+    expect(parseBalance(raw).chat.hourlyNotice).toBe('');
+    raw.chat.hourlyNotice = 'x'.repeat(501);
+    expect(() => parseBalance(raw)).toThrow(/chat\.hourlyNotice/);
+  });
+
   it('tem a loja com a Poção de Cura', () => {
     const b = loadBalance(BALANCE_PATH);
     expect(b.shop.items.pocao.label).toBe('Poção de Cura');

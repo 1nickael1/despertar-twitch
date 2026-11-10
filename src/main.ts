@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { ConsoleChatClient } from './chat/console-client';
+import { HourlyNotice } from './chat/hourly-notice';
 import { OutboundQueue } from './chat/outbound-queue';
 import { TwitchChatClient } from './chat/twitch-client';
 import type { ChatClient } from './chat/types';
@@ -123,9 +124,14 @@ async function main(): Promise<void> {
 
   for (const announcement of game.start()) outbound.enqueue(announcement);
 
+  // Aviso fixo na virada de cada hora (hora do computador); sai mesmo com o jogo pausado.
+  const hourlyNotice = new HourlyNotice(balance.chat.hourlyNotice, systemClock.now());
+
   // Relógio do jogo: abre portais e resolve as rodadas mesmo sem ninguém digitar.
   ticker = setInterval(() => {
     try {
+      const notice = hourlyNotice.poll(systemClock.now());
+      if (notice) outbound.enqueue(notice);
       for (const announcement of game.tick()) outbound.enqueue(announcement);
       publishOverlay();
     } catch (err) {
