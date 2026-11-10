@@ -115,8 +115,9 @@ Para cada rank e espaço existe **um item** em duas qualidades:
 - O participante guarda **bônus da arma** e **fator da armadura** na hora de entrar.
 - Dano = fórmula da v2 + bônus da arma (antes do crítico e do `!atacar`).
 - Chance de cair = fórmula da v2 × fator da armadura.
-- Vitória: além de XP e ouro, os fragmentos da seção 4.2. A mensagem do ranking ganha
-  "+N 💎" por colocado.
+- Vitória: além de XP e ouro, os fragmentos da seção 4.2. O cabeçalho do ranking diz quanto cada
+  um ganhou ("🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo · 💎 +1 cada (1º +2) ‖ …"), para o top 10
+  continuar cabendo em uma mensagem.
 
 ## 6. Comandos e mensagens
 
@@ -126,7 +127,7 @@ Para cada rank e espaço existe **um item** em duas qualidades:
 | `!forjar arma\|armadura [rank]` | Forja o forjado do rank (padrão: atual) |
 | `!equipar <número\|nome>` | Equipa um item do inventário |
 | `!status` | Ganha "⚔️ Lâmina Enferrujada ★ +2 · 🛡️ Couro Gasto ×0,85" |
-| `!inventario` | Ouro · poções · fragmentos (💎 F ×4 · E ×1) · itens numerados (✅ = equipado) |
+| `!inventario` | Ouro · poções · fragmentos (`💎 F ×4 E ×1`) · itens numerados (`1) ⚔️ Lâmina Enferrujada ★ [F] ✅`) |
 | `!loja` | Poção, arma e armadura do rank, com preço |
 | `!ajuda` | Cita `!forjar` e `!equipar` |
 
