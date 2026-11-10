@@ -140,17 +140,15 @@ Exemplo para Rank F (caçada = 10 XP e 3 ouro; poção = 8 ouro):
 
 XP de raid passa pela mesma progressão da caçada (sobe nível, para no teto do rank).
 
-**Anúncio da vitória:** a Twitch não aceita quebra de linha, então o ranking sai em **uma mensagem
-por colocado**, com o dano que explica a posição:
+**Anúncio da vitória:** uma mensagem só (a Twitch não aceita quebra de linha), com medalhas e o
+dano que explica cada posição, colocados separados por `‖`:
 
 ```
-🏆 Goblin foi derrotado! 🔵 PORTAL AZUL limpo. Ranking de dano:
-1º ana — 50 de dano → +60 XP, +18 ouro
-2º bia — 40 de dano → +45 XP, +13 ouro
+🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro
 ```
 
-Mostra os 5 primeiros; acima disso, uma última linha "…e mais N caçadores também receberam
-recompensa."
+Mostra os 5 primeiros (🥇 🥈 🥉 4º 5º); acima disso termina com "‖ +N caçadores também receberam
+recompensa". Cabe no limite de 500 caracteres da Twitch.
 
 **Derrota:**
 
@@ -247,13 +245,11 @@ Validação (o bot não sobe se falhar):
 | `!usar pocao` | chat | Na batalha, levanta o participante caído (além do efeito da v1.1) |
 | `/portal [azul\|vermelho\|quebra]` | terminal | Abre um portal agora (tipo sorteado se omitido) |
 
-**`!ranking` da temporada (mudança na v1):** no mesmo formato, uma mensagem por colocado com a
-pontuação da ordem (rank, nível, XP), para ficar claro por que cada um está naquela posição:
+**`!ranking` da temporada (mudança na v1):** no mesmo formato, uma mensagem só com a pontuação
+da ordem (rank › nível › XP), para ficar claro por que cada um está naquela posição:
 
 ```
-🏆 Ranking da Temporada 1 (ordem: rank, nível, XP)
-1º ana — Rank C · Nv 17 · 35 XP
-2º [Rank S · T1] bia — Rank D · Nv 12 · 80 XP
+🏆 Ranking T1 (rank › nível › XP) ‖ 🥇 ana — C · Nv 17 · 35 XP ‖ 🥈 [Rank S · T1] bia — D · Nv 12 · 80 XP ‖ 🥉 caio — F · Nv 3 · 12 XP
 ```
 
 Recusas que vão ao chat usam o `notifyOnce` existente para não inundar (ex.: `!atacar` fora da

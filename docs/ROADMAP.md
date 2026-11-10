@@ -19,7 +19,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 |---|---|---|
 | **v1 — Despertar** | Ranks F→S, 5 classes, `!cacar`, `!reavaliar`, temporadas de 14 dias, títulos, ranking, administração só pelo terminal, renovação automática do token | ✅ no `main` |
 | **v1.1 — Loja** | `!loja`, `!comprar`, `!usar` / `!pocao`, `!inventario`; Poção de Cura (zera descanso, lesão e reavaliação; uma vitória nunca paga uma) | ✅ no `main` |
-| **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; `!ranking` em uma mensagem por colocado | ✅ no `main` |
+| **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
 | **v3 — Equipamento e PvP** | Drops, equipamentos, duelos | ⏳ |
 | **v4 — Overlay** | Tela no OBS | ⏳ |
 

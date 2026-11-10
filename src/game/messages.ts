@@ -48,6 +48,11 @@ const PORTAL_RULE: Record<PortalType, string> = {
 };
 const hunters = (count: number) => `${count} ${count === 1 ? 'caçador' : 'caçadores'}`;
 
+/** A Twitch não aceita quebra de linha: rankings são uma mensagem só, colocados separados por ‖. */
+const SEP = ' ‖ ';
+const MEDALS = ['🥇', '🥈', '🥉'];
+const place = (i: number) => MEDALS[i] ?? `${i + 1}º`;
+
 export const msg = {
   notAwakened: (n: string) => `${at(n)} você ainda não despertou! Digite !despertar para entrar no jogo.`,
   awakened: (n: string, cls: string) => `${at(n)} ✨ despertou como ${cls} Rank F! Use !cacar para começar.`,
@@ -80,14 +85,14 @@ export const msg = {
   status: (n: string, v: StatusView) =>
     `${at(n)} ${titled(v.title)}${v.classLabel} Rank ${R(v.rank)} · Nv ${v.level} (${v.xpText}) · ${v.gold} ouro · ${v.state}`,
 
-  /** Uma mensagem por colocado (a Twitch não aceita quebra de linha). */
-  ranking: (seasonNumber: number, entries: RankingEntry[]): string[] =>
+  /** Uma mensagem só, com a pontuação que explica a posição (rank › nível › XP). */
+  ranking: (seasonNumber: number, entries: RankingEntry[]): string =>
     entries.length === 0
-      ? [`🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`]
+      ? `🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`
       : [
-          `🏆 Ranking da Temporada ${seasonNumber} (ordem: rank, nível, XP)`,
-          ...entries.map((e, i) => `${i + 1}º ${titled(e.title)}${e.name} — Rank ${R(e.rank)} · Nv ${e.level} · ${e.xp} XP`),
-        ],
+          `🏆 Ranking T${seasonNumber} (rank › nível › XP)`,
+          ...entries.map((e, i) => `${place(i)} ${titled(e.title)}${e.name} — ${R(e.rank)} · Nv ${e.level} · ${e.xp} XP`),
+        ].join(SEP),
   rankingSelf: (n: string, position: number, total: number) =>
     `${at(n)} você está em ${position}º de ${total} na temporada.`,
 
@@ -158,12 +163,13 @@ export const msg = {
     for (const v of r.revived) parts.push(`✨ ${v.healer} levantou ${v.target}`);
     return parts.join(' · ');
   },
-  /** Ranking de dano: uma mensagem por colocado, com o dano que explica a posição. */
-  raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string[] => [
-    `🏆 ${boss} foi derrotado! ${PORTAL_LABEL[type]} limpo. Ranking de dano:`,
-    ...rewards.slice(0, 5).map((r) => `${r.place}º ${r.displayName} — ${r.damage} de dano → +${r.xp} XP, +${r.gold} ouro`),
-    ...(rewards.length > 5 ? [`…e mais ${rewards.length - 5} caçadores também receberam recompensa.`] : []),
-  ],
+  /** Ranking de dano numa mensagem só (top 5), com o dano que explica a posição. */
+  raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string =>
+    [
+      `🏆 ${boss} derrotado! ${PORTAL_LABEL[type]} limpo`,
+      ...rewards.slice(0, 5).map((r, i) => `${place(i)} ${r.displayName} — ${r.damage} de dano → +${r.xp} XP, +${r.gold} ouro`),
+      ...(rewards.length > 5 ? [`+${rewards.length - 5} caçadores também receberam recompensa`] : []),
+    ].join(SEP),
   raidDefeat: (type: PortalType, boss: string, hp: number) =>
     `💨 O tempo acabou: ${boss} sobreviveu com ${hp} HP e o ${PORTAL_LABEL[type]} se fechou.`,
   raidWiped: (type: PortalType, boss: string, hp: number) =>

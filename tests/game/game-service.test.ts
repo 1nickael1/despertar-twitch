@@ -161,8 +161,8 @@ describe('GameService', () => {
     repo.saveHunter({ ...repo.getHunter('u-ana')!, rank: 2 });
     awaken(bia, CLASS_MAGO);
     const top = say(ana, '!ranking');
-    expect(top[1]).toBe('1º ana — Rank D · Nv 1 · 0 XP');
-    expect(top[2]).toBe('2º bia — Rank F · Nv 1 · 0 XP');
+    expect(top).toHaveLength(1);
+    expect(top[0]).toContain('🥇 ana — D · Nv 1 · 0 XP ‖ 🥈 bia — F · Nv 1 · 0 XP');
     expect(say(bia, '!ranking eu')[0]).toContain('2º de 2');
   });
 

@@ -118,9 +118,10 @@ describe('GameService: raid', () => {
     // rodada 2: 20 + 20 → vitória, sem golpe do boss
     rng.push(d20(10), d20(10));
     const out = tickAfter(20_000);
-    expect(out).toContain('🏆 Goblin foi derrotado! 🔵 PORTAL AZUL limpo. Ranking de dano:');
-    expect(out).toContain('1º ana — 50 de dano → +60 XP, +18 ouro');
-    expect(out).toContain('2º bia — 40 de dano → +45 XP, +13 ouro');
+    expect(out).toHaveLength(2); // resumo da rodada + ranking numa mensagem só
+    expect(out[1]).toBe(
+      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
+    );
     expect(game.currentRaid).toBeNull();
     expect(repo.getHunter('u-ana')).toMatchObject({ level: 2, xp: 30, gold: 18 });
     expect(repo.getHunter('u-bia')).toMatchObject({ level: 2, xp: 15, gold: 13 });

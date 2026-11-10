@@ -46,18 +46,21 @@ describe('msg', () => {
     expect(t).toBe('@ana [Top 1 · T1] Assassino Rank E · Nv 7 (40/90 XP) · 32 ouro · ✅ pronto para caçar');
   });
 
-  it('ranking: uma mensagem por colocado, com a pontuação que explica a posição', () => {
-    expect(msg.ranking(1, [])).toEqual([expect.stringContaining('ninguém')]);
+  it('ranking: uma mensagem só, com medalhas e a pontuação que explica a posição', () => {
+    expect(msg.ranking(1, [])).toContain('ninguém');
+    const entry = (name: string, rank: number, level: number, xp: number, title: string | null = null) =>
+      ({ name, title, rank, level, xp });
     expect(
       msg.ranking(1, [
-        { name: 'ana', title: null, rank: 3, level: 17, xp: 35 },
-        { name: 'bia', title: 'Rank S · T1', rank: 2, level: 12, xp: 80 },
+        entry('ana', 3, 17, 35),
+        entry('bia', 2, 12, 80, 'Rank S · T1'),
+        entry('caio', 0, 3, 12),
+        entry('duda', 0, 2, 5),
       ]),
-    ).toEqual([
-      '🏆 Ranking da Temporada 1 (ordem: rank, nível, XP)',
-      '1º ana — Rank C · Nv 17 · 35 XP',
-      '2º [Rank S · T1] bia — Rank D · Nv 12 · 80 XP',
-    ]);
+    ).toBe(
+      '🏆 Ranking T1 (rank › nível › XP) ‖ 🥇 ana — C · Nv 17 · 35 XP ‖ 🥈 [Rank S · T1] bia — D · Nv 12 · 80 XP' +
+        ' ‖ 🥉 caio — F · Nv 3 · 12 XP ‖ 4º duda — F · Nv 2 · 5 XP',
+    );
   });
 
   it('portal aberto explica a regra do tipo e o tempo de entrada', () => {
@@ -83,17 +86,17 @@ describe('msg', () => {
     ).toBe('Rodada 1/15: grupo causou 20 de dano · Goblin: 480/500 HP · 🛡️ bia segurou o golpe');
   });
 
-  it('vitória: ranking de dano um por linha', () => {
+  it('vitória: ranking de dano em uma mensagem só', () => {
     const rw = (place: number, name: string, damage: number, xp: number, gold: number) =>
       ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0 });
-    expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toEqual([
-      '🏆 Goblin foi derrotado! 🔵 PORTAL AZUL limpo. Ranking de dano:',
-      '1º ana — 50 de dano → +60 XP, +18 ouro',
-      '2º bia — 40 de dano → +45 XP, +13 ouro',
-    ]);
-    const lines = msg.raidVictory('azul', 'Goblin', [1, 2, 3, 4, 5, 6, 7].map((i) => rw(i, `p${i}`, 100 - i, 30, 9)));
-    expect(lines).toHaveLength(7);
-    expect(lines[6]).toBe('…e mais 2 caçadores também receberam recompensa.');
+    expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toBe(
+      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
+    );
+    const many = msg.raidVictory('azul', 'Goblin', [1, 2, 3, 4, 5, 6, 7].map((i) => rw(i, `p${i}`, 100 - i, 30, 9)));
+    expect(many).toContain('‖ 5º p5 — 95 de dano');
+    expect(many).not.toContain('p6');
+    expect(many.endsWith(' ‖ +2 caçadores também receberam recompensa')).toBe(true);
+    expect(many.length).toBeLessThanOrEqual(500); // limite de mensagem da Twitch
   });
 
   it('derrota, quebra e caídos do vermelho', () => {
