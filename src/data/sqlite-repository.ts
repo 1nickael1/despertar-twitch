@@ -42,6 +42,8 @@ interface HunterRow {
   injured_until: number | null;
   reeval_blocked_until: number | null;
   equipped_title_id: string | null;
+  weapon_id: string | null;
+  armor_id: string | null;
   season_id: number;
 }
 
@@ -82,6 +84,8 @@ const toHunter = (r: HunterRow): Hunter => ({
   injuredUntil: r.injured_until,
   reevalBlockedUntil: r.reeval_blocked_until,
   equippedTitleId: r.equipped_title_id,
+  weaponId: r.weapon_id,
+  armorId: r.armor_id,
   seasonId: r.season_id,
 });
 
@@ -121,15 +125,16 @@ export class SqliteGameRepository implements GameRepository {
     this.db
       .prepare(
         `INSERT INTO hunters (user_id, display_name, class_id, rank, level, xp, gold, rank_reached_at,
-           last_hunt_at, injured_until, reeval_blocked_until, equipped_title_id, season_id)
+           last_hunt_at, injured_until, reeval_blocked_until, equipped_title_id, weapon_id, armor_id, season_id)
          VALUES (@userId, @displayName, @classId, @rank, @level, @xp, @gold, @rankReachedAt,
-           @lastHuntAt, @injuredUntil, @reevalBlockedUntil, @equippedTitleId, @seasonId)
+           @lastHuntAt, @injuredUntil, @reevalBlockedUntil, @equippedTitleId, @weaponId, @armorId, @seasonId)
          ON CONFLICT(user_id) DO UPDATE SET
            display_name = excluded.display_name, class_id = excluded.class_id, rank = excluded.rank,
            level = excluded.level, xp = excluded.xp, gold = excluded.gold,
            rank_reached_at = excluded.rank_reached_at, last_hunt_at = excluded.last_hunt_at,
            injured_until = excluded.injured_until, reeval_blocked_until = excluded.reeval_blocked_until,
-           equipped_title_id = excluded.equipped_title_id, season_id = excluded.season_id`,
+           equipped_title_id = excluded.equipped_title_id, weapon_id = excluded.weapon_id,
+           armor_id = excluded.armor_id, season_id = excluded.season_id`,
       )
       .run(h);
   }

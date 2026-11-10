@@ -8,17 +8,18 @@ describe('hunter', () => {
     expect(h).toEqual({
       userId: 'u9', displayName: 'bia', classId: 'mago', rank: 0, level: 1, xp: 0, gold: 0,
       rankReachedAt: 500, lastHuntAt: null, injuredUntil: null, reevalBlockedUntil: null,
-      equippedTitleId: null, seasonId: 3,
+      equippedTitleId: null, weaponId: null, armorId: null, seasonId: 3,
     });
   });
 
   it('resetForNewSeason zera progresso e mantém identidade, classe e título', () => {
     const h = makeHunter({ rank: 4, level: 22, xp: 90, gold: 300, lastHuntAt: 1, injuredUntil: 2,
-      reevalBlockedUntil: 3, equippedTitleId: 'top1-t1', classId: 'tanque' });
+      reevalBlockedUntil: 3, equippedTitleId: 'top1-t1', classId: 'tanque',
+      weaponId: 'arma-c-forjada', armorId: 'armadura-c-comum' });
     const r = resetForNewSeason(h, 2, 999);
     expect(r).toMatchObject({ rank: 0, level: 1, xp: 0, gold: 0, rankReachedAt: 999, lastHuntAt: null,
       injuredUntil: null, reevalBlockedUntil: null, seasonId: 2, equippedTitleId: 'top1-t1',
-      classId: 'tanque', userId: h.userId, displayName: h.displayName });
+      classId: 'tanque', userId: h.userId, displayName: h.displayName, weaponId: null, armorId: null });
   });
 
   it('hasProgress', () => {

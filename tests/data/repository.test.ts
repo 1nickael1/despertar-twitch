@@ -22,6 +22,14 @@ describe.each(factories)('GameRepository (%s)', (_name, make) => {
     expect(repo.getHunter('nao-existe')).toBeNull();
   });
 
+  it('salva e lê arma e armadura equipadas', () => {
+    const h = makeHunter({ userId: 'u2', weaponId: 'arma-f-forjada', armorId: null });
+    repo.saveHunter(h);
+    expect(repo.getHunter('u2')).toEqual(h);
+    repo.saveHunter({ ...h, weaponId: null, armorId: 'armadura-f-comum' });
+    expect(repo.getHunter('u2')).toMatchObject({ weaponId: null, armorId: 'armadura-f-comum' });
+  });
+
   it('saveHunter atualiza registro existente', () => {
     repo.saveHunter(makeHunter({ userId: 'u1', xp: 1 }));
     repo.saveHunter(makeHunter({ userId: 'u1', xp: 99, displayName: 'novo' }));

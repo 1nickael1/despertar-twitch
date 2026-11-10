@@ -18,6 +18,9 @@ export interface Hunter {
   injuredUntil: number | null;
   reevalBlockedUntil: number | null;
   equippedTitleId: string | null;
+  /** Arma e armadura equipadas (ids do catálogo de equipamento); null = nada. */
+  weaponId: string | null;
+  armorId: string | null;
   seasonId: number;
 }
 
@@ -54,4 +57,11 @@ export type PortalType = (typeof PORTAL_TYPES)[number];
 
 export function isPortalType(value: unknown): value is PortalType {
   return typeof value === 'string' && (PORTAL_TYPES as readonly string[]).includes(value);
+}
+
+export const EQUIPMENT_SLOTS = ['arma', 'armadura'] as const;
+export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number];
+
+export function isEquipmentSlot(value: unknown): value is EquipmentSlot {
+  return typeof value === 'string' && (EQUIPMENT_SLOTS as readonly string[]).includes(value);
 }

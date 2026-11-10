@@ -20,6 +20,8 @@ export function createHunter(
     injuredUntil: null,
     reevalBlockedUntil: null,
     equippedTitleId: null,
+    weaponId: null,
+    armorId: null,
     seasonId,
   };
 }
@@ -35,6 +37,8 @@ export function resetForNewSeason(h: Hunter, seasonId: number, now: number): Hun
     lastHuntAt: null,
     injuredUntil: null,
     reevalBlockedUntil: null,
+    weaponId: null,
+    armorId: null,
     seasonId,
   };
 }
