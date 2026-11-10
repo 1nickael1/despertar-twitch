@@ -16,6 +16,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [plans/2026-11-09-despertar-v3-equipamento.md](plans/2026-11-09-despertar-v3-equipamento.md) | Plano executado da v3 |
 | [specs/2026-11-09-despertar-v3.1-duelo-design.md](specs/2026-11-09-despertar-v3.1-duelo-design.md) | Spec da v3.1 (Duelo) |
 | [plans/2026-11-09-despertar-v3.1-duelo.md](plans/2026-11-09-despertar-v3.1-duelo.md) | Plano executado da v3.1 |
+| [specs/2026-11-09-despertar-v4-overlay-design.md](specs/2026-11-09-despertar-v4-overlay-design.md) | Spec da v4 (Overlay no OBS) |
 
 ## Status
 
@@ -26,7 +27,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
 | **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | ✅ no `main` |
 | **v3.1 — Duelo** | `!duelo @fulano [ouro]`, melhor de 3, aposta só entre ranks próximos | ✅ no `main` |
-| **v4 — Overlay** | Tela no OBS | ⏳ |
+| **v4 — Overlay** | Coluna lateral no OBS com ranking e raid, visual de janela de sistema | 📝 spec escrita, aguardando revisão |
 
 ## v2 — Portais (raids coletivas)
 
