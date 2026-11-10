@@ -19,6 +19,16 @@ describe('parseCommand', () => {
     expect(parseCommand('!ranking eu')).toEqual({ kind: 'ranking', self: true });
   });
 
+  it('forjar e equipar', () => {
+    expect(parseCommand('!forjar arma')).toEqual({ kind: 'forjar', slot: 'arma', rank: null });
+    expect(parseCommand('!FORJAR Armadura e')).toEqual({ kind: 'forjar', slot: 'armadura', rank: 1 });
+    expect(parseCommand('!forjar')).toEqual({ kind: 'forjar', slot: null, rank: null });
+    expect(parseCommand('!forjar espada')).toEqual({ kind: 'forjar', slot: null, rank: null });
+    expect(parseCommand('!forjar arma x')).toEqual({ kind: 'forjar', slot: null, rank: null });
+    expect(parseCommand('!equipar 2')).toEqual({ kind: 'equipar', arg: '2' });
+    expect(parseCommand('!equipar Lâmina ★')).toEqual({ kind: 'equipar', arg: 'Lâmina ★' });
+  });
+
   it('raid e atacar', () => {
     expect(parseCommand('!raid')).toEqual({ kind: 'raid' });
     expect(parseCommand('!RAID')).toEqual({ kind: 'raid' });

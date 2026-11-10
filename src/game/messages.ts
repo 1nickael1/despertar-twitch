@@ -1,5 +1,6 @@
 import { MAX_MESSAGE_LENGTH } from '../chat/outbound-queue';
 import type { HuntOutcome } from '../core/combat';
+import type { EquipmentItem } from '../core/equipment';
 import type { RaidReward, RoundReport } from '../core/raid';
 import { rankLetter, type PortalType } from '../core/types';
 
@@ -23,6 +24,8 @@ export interface StatusView {
   xpText: string;
   gold: number;
   state: string;
+  /** Arma e armadura equipadas (texto pronto); vazio = nada. */
+  gear?: string;
 }
 
 export interface RankingEntry {
@@ -53,6 +56,19 @@ const hunters = (count: number) => `${count} ${count === 1 ? 'caçador' : 'caça
 const SEP = ' ‖ ';
 const MEDALS = ['🥇', '🥈', '🥉'];
 const place = (i: number) => MEDALS[i] ?? `${i + 1}º`;
+
+const fmtFactor = (f: number) => `×${String(f).replace('.', ',')}`;
+const gearIcon = (i: EquipmentItem) => (i.slot === 'arma' ? '⚔️' : '🛡️');
+/** "+2 dano" (arma) ou "×0,85 lesão" (armadura). */
+export const gearPower = (i: EquipmentItem) => (i.slot === 'arma' ? `+${i.value} dano` : `${fmtFactor(i.value)} lesão`);
+const gear = (i: EquipmentItem) => `${gearIcon(i)} ${i.label} [${R(i.rank)}] (${gearPower(i)})`;
+
+/** " · 💎 +1 cada (1º +2)": quanto de fragmento cada um ganhou na raid. */
+function fragmentNote(rewards: RaidReward[]): string {
+  const top = rewards[0]?.fragments ?? 0;
+  if (top === 0) return '';
+  return rewards.length === 1 ? ` · 💎 +${top}` : ` · 💎 +${rewards[1].fragments} cada (1º +${top})`;
+}
 /** Rankings mostram até 10 pessoas: pódio completo, do 4º em diante compacto. */
 export const RANKING_SIZE = 10;
 const PODIUM = 3;
@@ -85,7 +101,8 @@ export const msg = {
 
   huntWin: (n: string, o: HuntOutcome) =>
     `${at(n)} ⚔️ venceu um ${o.monsterName} [${R(o.monsterRank)}] (${o.playerPower} vs ${o.monsterPower})` +
-    `${o.crit ? ' 💥 CRÍTICO!' : ''} — +${o.xpGained} XP, +${o.goldGained} ouro`,
+    `${o.crit ? ' 💥 CRÍTICO!' : ''} — +${o.xpGained} XP, +${o.goldGained} ouro` +
+    `${o.fragmentRank !== null ? ` · 💎 +1 Fragmento ${R(o.fragmentRank)}` : ''}`,
   huntLoss: (n: string, o: HuntOutcome, injuryMs: number) =>
     `${at(n)} 💀 foi derrotado por um ${o.monsterName} [${R(o.monsterRank)}] (${o.playerPower} vs ${o.monsterPower})` +
     `${o.xpGained > 0 ? ` — +${o.xpGained} XP de consolo` : ''}` +
@@ -107,7 +124,7 @@ export const msg = {
     `🌌 RE-DESPERTAR! ${at(n)} saltou de Rank ${R(fromRank)} para Rank ${R(toRank)}!`,
 
   status: (n: string, v: StatusView) =>
-    `${at(n)} ${titled(v.title)}${v.classLabel} Rank ${R(v.rank)} · Nv ${v.level} (${v.xpText}) · ${v.gold} ouro · ${v.state}`,
+    `${at(n)} ${titled(v.title)}${v.classLabel} Rank ${R(v.rank)} · Nv ${v.level} (${v.xpText}) · ${v.gold} ouro${v.gear ? ` · ${v.gear}` : ''} · ${v.state}`,
 
   /** Top 10 com a pontuação que explica a posição (rank › nível › XP); normalmente uma mensagem só. */
   ranking: (seasonNumber: number, entries: RankingEntry[]): string[] =>
@@ -147,7 +164,7 @@ export const msg = {
   shop: (n: string, rank: number, entries: { id: string; label: string; description: string; price: number }[]) =>
     `${at(n)} 🛒 Loja (preços do Rank ${R(rank)}): ` +
     entries.map((e) => `${e.label} — ${e.price} ouro (${e.description})`).join(' · ') +
-    ` · use !comprar ${entries[0]?.id ?? 'item'} [quantidade]`,
+    ` · use !comprar ${entries.map((e) => e.id).join(' | ')}`,
   bought: (n: string, label: string, qty: number, total: number, owned: number, goldLeft: number) =>
     `${at(n)} 🧪 comprou ${qty}× ${label} por ${total} ouro. Agora tem ${owned} · ouro: ${goldLeft}`,
   notEnoughGold: (n: string, label: string, qty: number, total: number, gold: number) =>
@@ -161,9 +178,46 @@ export const msg = {
     `${at(n)} 🧪 usou ${label}: descanso, lesão e reavaliação zerados! Restam ${left}.`,
   nothingToHeal: (n: string, label: string) =>
     `${at(n)} você já está pronto pra caçar; a ${label} ficou guardada.`,
-  inventory: (n: string, gold: number, items: { label: string; qty: number }[]) =>
-    `${at(n)} 🎒 ${gold} ouro · ` +
-    (items.length > 0 ? items.map((i) => `${i.label} ×${i.qty}`).join(' · ') : 'nenhum item'),
+  inventory: (
+    n: string,
+    gold: number,
+    items: { label: string; qty: number }[],
+    fragments: { rank: number; qty: number }[] = [],
+    equipment: { item: EquipmentItem; equipped: boolean }[] = [],
+  ) => {
+    const parts = [
+      ...items.map((i) => `${i.label} ×${i.qty}`),
+      ...(fragments.length > 0 ? [`💎 ${fragments.map((f) => `${R(f.rank)} ×${f.qty}`).join(' ')}`] : []),
+      ...equipment.map((e, i) => `${i + 1}) ${gearIcon(e.item)} ${e.item.label} [${R(e.item.rank)}]${e.equipped ? ' ✅' : ''}`),
+    ];
+    return `${at(n)} 🎒 ${gold} ouro · ${parts.length > 0 ? parts.join(' · ') : 'nenhum item'}`;
+  },
+  statusGear: (weapon: EquipmentItem | null, armor: EquipmentItem | null) =>
+    [weapon && `⚔️ ${weapon.label} +${weapon.value}`, armor && `🛡️ ${armor.label} ${fmtFactor(armor.value)}`]
+      .filter(Boolean)
+      .join(' · '),
+  boughtGear: (n: string, item: EquipmentItem, price: number, equipped: boolean, goldLeft: number) =>
+    `${at(n)} 🛒 comprou ${gear(item)} por ${price} ouro · ${equipped ? 'equipado ✅' : 'guardado no !inventario'} · ouro: ${goldLeft}`,
+  forged: (
+    n: string,
+    item: EquipmentItem,
+    cost: { fragments: number; gold: number },
+    equipped: boolean,
+    fragmentsLeft: number,
+  ) =>
+    `${at(n)} 🔨 forjou ${gear(item)} com ${cost.fragments} 💎 ${R(item.rank)} e ${cost.gold} ouro · ` +
+    `${equipped ? 'equipado ✅' : 'guardado no !inventario'} · sobram ${fragmentsLeft} 💎 ${R(item.rank)}`,
+  alreadyOwn: (n: string, item: EquipmentItem) => `${at(n)} você já tem ${gearIcon(item)} ${item.label} [${R(item.rank)}].`,
+  forgeUsage: (n: string) => `${at(n)} use: !forjar arma|armadura [rank] (ex.: !forjar arma F)`,
+  forgeRank: (n: string, maxRank: number) => `${at(n)} você só pode forjar até o seu rank (${R(maxRank)}).`,
+  forgeFragments: (n: string, rank: number, have: number, need: number) =>
+    `${at(n)} faltam fragmentos: precisa de ${need} 💎 ${R(rank)} e tem ${have}.`,
+  forgeGold: (n: string, need: number, have: number) =>
+    `${at(n)} ouro insuficiente para forjar: custa ${need} e você tem ${have}.`,
+  equipUsage: (n: string) => `${at(n)} use: !equipar <número ou nome> (veja o !inventario)`,
+  equipNotFound: (n: string) => `${at(n)} você não tem esse item. Veja o !inventario.`,
+  equipRank: (n: string, item: EquipmentItem) => `${at(n)} ${gear(item)} é de rank acima do seu.`,
+  equipped: (n: string, item: EquipmentItem) => `${at(n)} ✅ equipou ${gear(item)}.`,
 
   portalOpened: (type: PortalType, boss: string, hp: number, entryMs: number) =>
     `${PORTAL_LABEL[type]} abriu! Boss: ${boss} (${hp} HP). ${PORTAL_RULE[type]} Digite !raid em ${fmtDuration(entryMs)} para entrar.`,
@@ -196,7 +250,7 @@ export const msg = {
   /** Ranking de dano (top 10) com o dano e a recompensa de cada um; normalmente uma mensagem só. */
   raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string[] =>
     pack([
-      `🏆 ${boss} derrotado! ${PORTAL_LABEL[type]} limpo`,
+      `🏆 ${boss} derrotado! ${PORTAL_LABEL[type]} limpo${fragmentNote(rewards)}`,
       ...rewards
         .slice(0, RANKING_SIZE)
         .map((r, i) =>
@@ -227,5 +281,5 @@ export const msg = {
   paused: () => '⏸️ O jogo foi pausado.',
   resumed: () => '▶️ O jogo voltou! Bora caçar.',
   help: () =>
-    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario · !raid · !atacar',
+    'Comandos: !despertar · !cacar · !status · !reavaliar · !ranking [eu] · !titulos · !titulo <n> · !temporada · !loja · !comprar pocao [qtd] · !usar pocao · !inventario · !raid · !atacar · !forjar arma|armadura · !equipar <n>',
 };

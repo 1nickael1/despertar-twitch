@@ -1,4 +1,5 @@
 import { normalizeText } from '../core/text';
+import { isEquipmentSlot, RANKS, type EquipmentSlot, type RankLetter } from '../core/types';
 
 export { normalizeText };
 
@@ -18,7 +19,9 @@ export type Command =
   | { kind: 'usar'; item: string }
   | { kind: 'inventario' }
   | { kind: 'raid' }
-  | { kind: 'atacar' };
+  | { kind: 'atacar' }
+  | { kind: 'forjar'; slot: EquipmentSlot | null; rank: number | null }
+  | { kind: 'equipar'; arg: string };
 
 // Map (e não objeto literal) para que "!constructor" e afins não casem com o protótipo.
 const ALIASES = new Map<string, string>([
@@ -43,6 +46,9 @@ const ALIASES = new Map<string, string>([
   ['mochila', 'inventario'],
   ['raid', 'raid'],
   ['atacar', 'atacar'],
+  ['forjar', 'forjar'],
+  ['forja', 'forjar'],
+  ['equipar', 'equipar'],
 ]);
 
 export function parseCommand(text: string): Command | null {
@@ -80,6 +86,15 @@ export function parseCommand(text: string): Command | null {
     }
     case 'usar':
       return { kind: 'usar', item: arg };
+    case 'forjar': {
+      // "!forjar arma" ou "!forjar armadura e": espaço e, opcionalmente, a letra do rank.
+      const [slotToken, rankToken, ...extra] = arg ? arg.split(/\s+/) : [];
+      const rank = rankToken === undefined ? null : RANKS.indexOf(rankToken.toUpperCase() as RankLetter);
+      if (!isEquipmentSlot(slotToken) || rank === -1 || extra.length > 0) return { kind: 'forjar', slot: null, rank: null };
+      return { kind: 'forjar', slot: slotToken, rank };
+    }
+    case 'equipar':
+      return { kind: 'equipar', arg: argRaw };
     case 'pocao':
       return { kind: 'usar', item: 'pocao' };
     default:

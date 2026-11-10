@@ -120,7 +120,7 @@ describe('GameService: raid', () => {
     const out = tickAfter(20_000);
     expect(out).toHaveLength(2); // resumo da rodada + ranking numa mensagem só
     expect(out[1]).toBe(
-      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
+      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo · 💎 +1 cada (1º +2) ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
     );
     expect(game.currentRaid).toBeNull();
     expect(repo.getHunter('u-ana')).toMatchObject({ level: 2, xp: 30, gold: 18 });

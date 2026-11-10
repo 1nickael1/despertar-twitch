@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HuntOutcome } from '../../src/core/combat';
-import { fmtDuration, msg } from '../../src/game/messages';
+import { fmtDuration, gearPower, msg } from '../../src/game/messages';
 import { makeHunter } from '../helpers';
 
 const outcome = (o: Partial<HuntOutcome> = {}): HuntOutcome => ({
@@ -114,7 +114,7 @@ describe('msg', () => {
     const rw = (place: number, name: string, damage: number, xp: number, gold: number) =>
       ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0, rank: 0, fragments: place === 1 ? 2 : 1 });
     expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toEqual([
-      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
+      '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo · 💎 +1 cada (1º +2) ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
     ]);
     // top 10: pódio completo, 4º–10º compacto, o resto resumido; cabe no limite da Twitch
     const many = msg.raidVictory('azul', 'Goblin', Array.from({ length: 12 }, (_, i) => rw(i + 1, `jogador${i + 1}`, 100 - i, 30, 9)));
@@ -125,6 +125,50 @@ describe('msg', () => {
     expect(many[0]).not.toContain('jogador11');
     expect(many[0].endsWith(' ‖ +2 caçadores também receberam recompensa')).toBe(true);
     expect(many[0].length).toBeLessThanOrEqual(500); // limite de mensagem da Twitch
+  });
+
+  it('equipamento: vitória com fragmento, status, loja e inventário', () => {
+    const sword = { id: 'arma-f-forjada', slot: 'arma' as const, rank: 0, quality: 'forjada' as const, label: 'Lâmina Enferrujada ★', value: 2 };
+    const leather = { id: 'armadura-f-comum', slot: 'armadura' as const, rank: 0, quality: 'comum' as const, label: 'Couro Gasto', value: 0.85 };
+    expect(msg.huntWin('ana', outcome({ fragmentRank: 1 }))).toBe(
+      '@ana ⚔️ venceu um Lobo de Gelo [E] (27 vs 21) — +15 XP, +5 ouro · 💎 +1 Fragmento E',
+    );
+    expect(gearPower(sword)).toBe('+2 dano');
+    expect(gearPower(leather)).toBe('×0,85 lesão');
+    expect(msg.statusGear(sword, leather)).toBe('⚔️ Lâmina Enferrujada ★ +2 · 🛡️ Couro Gasto ×0,85');
+    expect(msg.statusGear(null, null)).toBe('');
+    expect(msg.status('ana', { title: null, classLabel: 'Guerreiro', rank: 0, level: 2, xpText: '5/40 XP', gold: 3,
+      state: '✅ pronto para caçar', gear: '⚔️ Lâmina Enferrujada ★ +2' })).toBe(
+      '@ana Guerreiro Rank F · Nv 2 (5/40 XP) · 3 ouro · ⚔️ Lâmina Enferrujada ★ +2 · ✅ pronto para caçar',
+    );
+    expect(msg.inventory('ana', 4, [], [{ rank: 0, qty: 4 }, { rank: 1, qty: 1 }], [
+      { item: sword, equipped: true }, { item: leather, equipped: false },
+    ])).toBe('@ana 🎒 4 ouro · 💎 F ×4 E ×1 · 1) ⚔️ Lâmina Enferrujada ★ [F] ✅ · 2) 🛡️ Couro Gasto [F]');
+  });
+
+  it('equipamento: comprar, forjar, equipar e recusas', () => {
+    const common = { id: 'arma-f-comum', slot: 'arma' as const, rank: 0, quality: 'comum' as const, label: 'Lâmina Enferrujada', value: 1 };
+    const forged = { ...common, id: 'arma-f-forjada', quality: 'forjada' as const, label: 'Lâmina Enferrujada ★', value: 2 };
+    expect(msg.boughtGear('ana', common, 18, true, 2)).toBe(
+      '@ana 🛒 comprou ⚔️ Lâmina Enferrujada [F] (+1 dano) por 18 ouro · equipado ✅ · ouro: 2',
+    );
+    expect(msg.boughtGear('ana', common, 18, false, 2)).toContain('guardado no !inventario');
+    expect(msg.forged('ana', forged, { fragments: 6, gold: 6 }, true, 1)).toBe(
+      '@ana 🔨 forjou ⚔️ Lâmina Enferrujada ★ [F] (+2 dano) com 6 💎 F e 6 ouro · equipado ✅ · sobram 1 💎 F',
+    );
+    expect(msg.alreadyOwn('ana', common)).toBe('@ana você já tem ⚔️ Lâmina Enferrujada [F].');
+    expect(msg.forgeUsage('ana')).toBe('@ana use: !forjar arma|armadura [rank] (ex.: !forjar arma F)');
+    expect(msg.forgeRank('ana', 0)).toBe('@ana você só pode forjar até o seu rank (F).');
+    expect(msg.forgeFragments('ana', 0, 2, 6)).toBe('@ana faltam fragmentos: precisa de 6 💎 F e tem 2.');
+    expect(msg.forgeGold('ana', 6, 1)).toBe('@ana ouro insuficiente para forjar: custa 6 e você tem 1.');
+    expect(msg.equipUsage('ana')).toBe('@ana use: !equipar <número ou nome> (veja o !inventario)');
+    expect(msg.equipNotFound('ana')).toBe('@ana você não tem esse item. Veja o !inventario.');
+    expect(msg.equipRank('ana', { ...common, rank: 1, label: 'Espada de Ferro' })).toBe(
+      '@ana ⚔️ Espada de Ferro [E] (+1 dano) é de rank acima do seu.',
+    );
+    expect(msg.equipped('ana', forged)).toBe('@ana ✅ equipou ⚔️ Lâmina Enferrujada ★ [F] (+2 dano).');
+    expect(msg.help()).toContain('!forjar');
+    expect(msg.help()).toContain('!equipar');
   });
 
   it('derrota, quebra e caídos do vermelho', () => {
@@ -142,7 +186,7 @@ describe('msg', () => {
 
   it('loja, compra e inventário', () => {
     expect(msg.shop('ana', 1, [{ id: 'pocao', label: 'Poção de Cura', description: 'zera tudo', price: 13 }])).toBe(
-      '@ana 🛒 Loja (preços do Rank E): Poção de Cura — 13 ouro (zera tudo) · use !comprar pocao [quantidade]',
+      '@ana 🛒 Loja (preços do Rank E): Poção de Cura — 13 ouro (zera tudo) · use !comprar pocao',
     );
     expect(msg.bought('ana', 'Poção de Cura', 2, 26, 3, 4)).toBe(
       '@ana 🧪 comprou 2× Poção de Cura por 26 ouro. Agora tem 3 · ouro: 4',
