@@ -52,10 +52,10 @@ desafiar qualquer um; o desafiado aceita ou recusa. Com 2 ou mais ranks de difer
 ```
 
 ### 3.2 Responder
-- `!aceitar`: confere de novo raid, ouro e cooldown dos dois. Se algo falhar, o desafio é
+- `!aceitar`: confere de novo raid e ouro dos dois (o cooldown não muda enquanto há desafio pendente). Se algo falhar, o desafio é
   cancelado com o motivo. Senão, a luta acontece na hora.
 - `!recusar`: o desafio some e o bot avisa.
-- `!aceitar`/`!recusar` sem desafio pendente: avisa uma vez.
+- `!aceitar`/`!recusar` sem desafio pendente: avisa (a proteção de 2 s evita flood).
 - **Expirou** (60 s sem resposta): o relógio do jogo (`tick()`) avisa e o desafio some.
 
 ### 3.3 Regra de rank
