@@ -30,6 +30,9 @@ import {
   reviveWithPotion,
   rollPortalType,
   type Raid,
+  type RaidParticipant,
+  type RaidReward,
+  type RoundReport,
 } from '../core/raid';
 import { sortRanking } from '../core/ranking';
 import { resolveReevaluation } from '../core/reevaluation';
@@ -61,6 +64,20 @@ export interface GameDeps {
   balance: Balance;
   rng: Rng;
   clock: Clock;
+}
+
+export type RaidOutcome = 'vitoria' | 'derrota' | 'todos-caidos' | 'quebra' | 'vazio';
+
+/** Como a última raid terminou (o overlay mostra por alguns segundos). */
+export interface RaidEnding {
+  type: PortalType;
+  bossName: string;
+  outcome: RaidOutcome;
+  hp: number;
+  maxHp: number;
+  rewards: RaidReward[];
+  participants: RaidParticipant[];
+  endedAt: number;
 }
 
 interface PendingDuel {
@@ -96,6 +113,9 @@ export class GameService {
   /** Raid em andamento. Só em memória: reiniciar o bot cancela a raid. */
   private raid: Raid | null = null;
   private nextPortal: number | null = null;
+  /** Para o overlay: última rodada da raid atual e como terminou a última raid. */
+  private lastRound: RoundReport | null = null;
+  private lastEnding: RaidEnding | null = null;
   /** Desafios de duelo esperando resposta, pelo id do desafiado. Só em memória. */
   private readonly pendingDuels = new Map<string, PendingDuel>();
   private readonly duelCooldownUntil = new Map<string, number>();
@@ -119,6 +139,14 @@ export class GameService {
 
   get nextPortalAt(): number | null {
     return this.nextPortal;
+  }
+
+  get lastRaidRound(): RoundReport | null {
+    return this.lastRound;
+  }
+
+  get lastRaidEnding(): RaidEnding | null {
+    return this.lastEnding;
   }
 
   /** Relógio do jogo: chamado a cada 1 s. Vira temporada, abre portal e resolve rodadas. Devolve anúncios. */
@@ -288,6 +316,7 @@ export class GameService {
     const portalType = type ?? rollPortalType(b, rng);
     const strongest = Math.max(...hunters.map((h) => h.rank));
     this.raid = openRaid(portalType, pick(rng, b.monsters[strongest]), now, b);
+    this.lastRound = null;
     this.nextPortal = null;
     return [msg.portalOpened(portalType, this.raid.bossName, this.raid.maxHp, b.raid.entryMs)];
   }
@@ -315,6 +344,7 @@ export class GameService {
       const { raid: next, report } = resolveRound(raid, b, this.deps.rng);
       raid = next;
       out.push(msg.raidRound(raid.bossName, report));
+      this.lastRound = report;
       if (report.won) return [...out, ...this.finishRaid(raid, true, now)];
       // Todos caídos: derrota na hora (sem rodadas vazias floodando o chat).
       if (raid.participants.every((p) => p.down)) return [...out, ...this.finishRaid(raid, false, now, true)];
@@ -328,10 +358,25 @@ export class GameService {
   private finishRaid(raid: Raid, won: boolean, now: number, wiped = false): string[] {
     const { repo, balance: b } = this.deps;
     this.raid = null;
+    this.lastRound = null;
     this.nextPortal = now + b.raid.intervalMs;
-    if (raid.participants.length === 0 && raid.type !== 'quebra') return [msg.portalClosedEmpty(raid.type)];
+    const ending = (outcome: RaidOutcome, rewards: RaidReward[]): RaidEnding => ({
+      type: raid.type,
+      bossName: raid.bossName,
+      outcome,
+      hp: raid.hp,
+      maxHp: raid.maxHp,
+      rewards,
+      participants: raid.participants,
+      endedAt: now,
+    });
+    if (raid.participants.length === 0 && raid.type !== 'quebra') {
+      this.lastEnding = ending('vazio', []);
+      return [msg.portalClosedEmpty(raid.type)];
+    }
     const rewards = raidRewards(raid, won, b);
     const broke = !won && raid.type === 'quebra';
+    this.lastEnding = ending(won ? 'vitoria' : broke ? 'quebra' : wiped ? 'todos-caidos' : 'derrota', rewards);
     repo.transaction(() => {
       for (const r of rewards) {
         const h = repo.getHunter(r.userId);
@@ -357,6 +402,7 @@ export class GameService {
   private cancelRaid(now: number): string[] {
     if (!this.raid) return [];
     this.raid = null;
+    this.lastRound = null;
     this.nextPortal = now + this.deps.balance.raid.intervalMs;
     return [msg.raidCancelled()];
   }

@@ -63,6 +63,7 @@
     "raidTopDamageBonusFragments": 1,
     "forge": { "fragments": 6, "goldMultiplier": 2 }
   },
+  "overlay": { "resultMs": 20000, "rankingSize": 5 },
   "duel": {
     "acceptMs": 60000,
     "cooldownMs": 120000,

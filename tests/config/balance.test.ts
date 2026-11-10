@@ -103,6 +103,7 @@ describe('balance', () => {
     expect(b.duel.acceptMs).toBe(60_000);
     expect(b.duel.armorDefense.forjada).toBe(2);
     expect(b.duel.fairRankGap).toBe(1);
+    expect(b.overlay).toEqual({ resultMs: 20_000, rankingSize: 5 });
   });
 
   it('recusa duelo sem rodada para vencer', () => {

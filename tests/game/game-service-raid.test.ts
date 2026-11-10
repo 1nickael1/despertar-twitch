@@ -234,4 +234,44 @@ describe('GameService: raid', () => {
     expect(out).toContain('Rodada 3/15');
     expect(out).not.toContain('Rodada 4/15');
   });
+
+  it('guarda a última rodada e o desfecho da raid (para o overlay)', () => {
+    const { rng, clock, game, say, awaken, tickAfter, portal } = setup((b) => {
+      b.raid.bossHp.azul = 30;
+    });
+    awaken(ana);
+    portal('azul');
+    expect(game.lastRaidRound).toBeNull();
+    say(ana, '!raid');
+    tickAfter(MIN);
+    rng.push(d20(1), 0.99); // 11 de dano, boss erra
+    tickAfter(20_000);
+    expect(game.lastRaidRound).toMatchObject({ round: 1, groupDamage: 11, hp: 19 });
+    rng.push(d20(20)); // 30 de dano: vitória
+    tickAfter(20_000);
+    expect(game.lastRaidRound).toBeNull();
+    expect(game.lastRaidEnding).toMatchObject({ type: 'azul', bossName: 'Goblin', outcome: 'vitoria', hp: 0, maxHp: 30, endedAt: clock.t });
+    expect(game.lastRaidEnding!.rewards[0]).toMatchObject({ displayName: 'ana', fragments: 2 });
+    expect(game.lastRaidEnding!.participants[0]).toMatchObject({ classId: 'guerreiro' });
+  });
+
+  it('desfecho: portal vazio, quebra vazia e cancelamento', () => {
+    const a = setup();
+    a.awaken(ana);
+    a.portal('azul');
+    a.tickAfter(MIN);
+    expect(a.game.lastRaidEnding).toMatchObject({ outcome: 'vazio' });
+
+    const q = setup();
+    q.awaken(ana);
+    q.portal('quebra');
+    q.tickAfter(MIN);
+    expect(q.game.lastRaidEnding).toMatchObject({ outcome: 'quebra' });
+
+    const c = setup();
+    c.awaken(ana);
+    c.portal('azul');
+    c.game.admin({ action: 'pausar' });
+    expect(c.game.lastRaidEnding).toBeNull();
+  });
 });

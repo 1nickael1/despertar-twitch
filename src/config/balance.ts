@@ -81,6 +81,12 @@ const equipmentSchema = z.object({
   forge: z.object({ fragments: z.number().int().min(1), goldMultiplier: z.number().nonnegative() }),
 });
 
+const overlaySchema = z.object({
+  /** Quanto tempo o resultado da raid fica na tela do overlay. */
+  resultMs: z.number().int().positive(),
+  rankingSize: z.number().int().min(1).max(10),
+});
+
 const duelSchema = z.object({
   acceptMs: z.number().int().positive(),
   cooldownMs: z.number().int().nonnegative(),
@@ -130,6 +136,7 @@ export const balanceSchema = z.object({
   raid: raidSchema,
   equipment: equipmentSchema,
   duel: duelSchema,
+  overlay: overlaySchema,
   classes: z.object({
     guerreiro: classSchema,
     mago: classSchema,
