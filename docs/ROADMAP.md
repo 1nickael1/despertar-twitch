@@ -28,7 +28,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
 | **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | ✅ no `main` |
 | **v3.1 — Duelo** | `!duelo @fulano [ouro]`, melhor de 3, aposta só entre ranks próximos | ✅ no `main` |
-| **v4 — Overlay** | Coluna lateral no OBS com ranking e raid, visual de janela de sistema | ✅ no ramo `v4-overlay` |
+| **v4 — Overlay** | Coluna lateral no OBS com ranking e raid, visual de janela de sistema | ✅ no `main` |
 
 ## v2 — Portais (raids coletivas)
 
