@@ -44,6 +44,8 @@ const raidSchema = z
       .refine((m) => m.every((v, i) => i === 0 || v <= m[i - 1]), { message: 'use ordem decrescente (1º ganha mais)' }),
     attackBonus: z.number().nonnegative(),
     knockdownFactor: probability,
+    /** Chance de o Tanque de pé puxar o golpe do boss; senão o alvo é sorteado entre todos de pé. */
+    tankInterceptChance: probability,
     redFallXpHunts: z.number().nonnegative(),
     breakInjuryMs: z.number().int().positive(),
   })

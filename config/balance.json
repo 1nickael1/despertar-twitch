@@ -41,6 +41,7 @@
     "placeMultipliers": [2, 1.5, 1.25],
     "attackBonus": 0.5,
     "knockdownFactor": 0.5,
+    "tankInterceptChance": 0.6,
     "redFallXpHunts": 2,
     "breakInjuryMs": 600000
   },

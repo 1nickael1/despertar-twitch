@@ -49,6 +49,7 @@ describe('balance', () => {
     expect(b.raid.bossHp).toEqual({ azul: 500, vermelho: 800, quebra: 1000 });
     expect(b.raid.battleMs / b.raid.roundMs).toBe(15);
     expect(b.raid.entryMs).toBe(60_000);
+    expect(b.raid.tankInterceptChance).toBe(0.6);
   });
 
   it('recusa batalha que não é múltiplo da rodada', () => {

@@ -87,8 +87,11 @@ Na ordem:
    - Dano soma no total da raid e no placar de cada um.
 2. **Vitória?** Se o HP chegou a 0, a raid termina aqui (o boss não revida).
 3. **Boss revida** contra 1 participante de pé:
-   - Se há **Tanque de pé**, o golpe vai nele (se houver mais de um, sorteia entre os Tanques).
-   - Senão, sorteia entre os de pé.
+   - Se há **Tanque de pé**, ele puxa o golpe com `raid.tankInterceptChance` (**60%**; se houver
+     mais de um, sorteia entre os Tanques). Nos outros 40%, o alvo é sorteado entre todos de pé,
+     inclusive o Tanque. *(Mudado depois da v2: com o Tanque puxando sempre, os outros quase nunca
+     eram atacados e o grupo praticamente não perdia.)*
+   - Sem Tanque de pé, sorteia entre os de pé.
    - Chance de cair = `chance de lesão da classe × raid.knockdownFactor` (**0,5**). O
      **Curandeiro**, imune a lesão nas caçadas, usa na raid a fórmula base
      (`baseInjuryChance − vit × injuryPerVit`, com mínimo) para poder cair.

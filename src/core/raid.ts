@@ -153,7 +153,8 @@ export interface RoundReport {
 
 /**
  * Uma rodada. Sorteios, na ordem: d20 de cada participante de pé (ordem de entrada),
- * alvo do boss (só com mais de um candidato) e chance de cair. Na vitória o boss não revida.
+ * proteção do Tanque (só se houver Tanque de pé), alvo do boss (só com mais de um candidato) e
+ * chance de cair. Na vitória o boss não revida.
  */
 export function resolveRound(raid: Raid, b: Balance, rng: Rng): { raid: Raid; report: RoundReport } {
   const round = raid.round + 1;
@@ -177,8 +178,10 @@ export function resolveRound(raid: Raid, b: Balance, rng: Rng): { raid: Raid; re
   if (!won) {
     const standing = parts.filter((p) => !p.down);
     if (standing.length > 0) {
+      // O Tanque puxa o golpe só às vezes: se sempre puxasse, o grupo quase nunca perderia.
       const tanks = standing.filter((p) => p.classId === 'tanque');
-      const pool = tanks.length > 0 ? tanks : standing;
+      const intercepted = tanks.length > 0 && chance(rng, b.raid.tankInterceptChance);
+      const pool = intercepted ? tanks : standing;
       const target = pool.length === 1 ? pool[0] : pick(rng, pool);
       const fell = chance(rng, knockdownChance(target.classId, b) * target.armorFactor);
       if (fell) {

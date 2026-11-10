@@ -150,11 +150,30 @@ describe('raid: rodada', () => {
     expect(rng.remaining).toBe(0);
   });
 
-  it('o golpe vai no Tanque de pé, sem sorteio de alvo', () => {
+  it('o Tanque de pé puxa o golpe quando o sorteio de proteção acerta (60%)', () => {
     const raid = started(joined(ana, bia));
-    const { raid: next, report } = resolveRound(raid, b, seqRng([d20(1), d20(1), 0]));
+    // d20 ana, d20 bia, proteção 0,59 < 0,6 (puxa), queda 0
+    const rng = seqRng([d20(1), d20(1), 0.59, 0]);
+    const { raid: next, report } = resolveRound(raid, b, rng);
     expect(report.bossHit).toEqual({ name: 'bia', fell: true, tank: true });
     expect(next.participants[1]).toMatchObject({ down: true, downSinceRound: 1 });
+    expect(rng.remaining).toBe(0);
+  });
+
+  it('quando o Tanque não puxa, o boss sorteia entre todos de pé', () => {
+    const raid = started(joined(ana, bia));
+    // proteção 0,6 (não puxa), alvo sorteado 0 → ana, queda 0
+    const rng = seqRng([d20(1), d20(1), 0.6, 0, 0]);
+    const { report } = resolveRound(raid, b, rng);
+    expect(report.bossHit).toEqual({ name: 'ana', fell: true, tank: false });
+    expect(rng.remaining).toBe(0);
+  });
+
+  it('sem Tanque de pé não há sorteio de proteção', () => {
+    const raid = started(joined(ana, duda));
+    const rng = seqRng([d20(1), d20(1), 0, 0.99]);
+    expect(resolveRound(raid, b, rng).report.bossHit).toEqual({ name: 'ana', fell: false, tank: false });
+    expect(rng.remaining).toBe(0);
   });
 
   it('caído não bate; Curandeiro levanta quem caiu primeiro', () => {
