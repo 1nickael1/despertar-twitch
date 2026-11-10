@@ -70,9 +70,14 @@ Para decidir no design da v3:
 
 ## Pendências fora das versões
 
-- **Primeiro teste no chat real** (com a live desligada): `npm --prefix despertar run dev` e
-  `!despertar` no canal. Até agora o bot foi testado no console e na tela local.
 - **HP do boss escalando** com número de jogadores e rank, quando o chat crescer (spec v2, seção 11).
-- **Balanceamento das classes** (`npm run sim`): o Mago passa de 90% de vitória no fim de cada rank;
-  Curandeiro e Tanque caem para ~40% no começo dos ranks altos. Com o forjado da v3 o Mago chega a 98%
-  antes do teto nos ranks B e A. Bom tema para uma live de ajuste.
+- **Balanceamento do Curandeiro e do Tanque** (`npm run sim`): caem para ~41–43% de vitória no piso
+  do Rank A (o Guerreiro fica em ~56%). Eles compensam com menos lesão e XP na derrota, mas vale
+  olhar.
+
+Feito:
+- Teste no chat real (2026-11-09).
+- **Mago rebalanceado** (2026-11-09): crescimento por nível de 1,8 para 1,6. Antes ia de 48% de
+  vitória no piso do F a 95% antes do teto do A (98% com forjado); agora fica entre 47% e 62% no piso
+  e no máximo 81% antes do teto (91% com forjado, igual ao Guerreiro). Continua "começa fraco,
+  termina forte", dentro da faixa das outras classes.
