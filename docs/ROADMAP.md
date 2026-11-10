@@ -17,6 +17,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [specs/2026-11-09-despertar-v3.1-duelo-design.md](specs/2026-11-09-despertar-v3.1-duelo-design.md) | Spec da v3.1 (Duelo) |
 | [plans/2026-11-09-despertar-v3.1-duelo.md](plans/2026-11-09-despertar-v3.1-duelo.md) | Plano executado da v3.1 |
 | [specs/2026-11-09-despertar-v4-overlay-design.md](specs/2026-11-09-despertar-v4-overlay-design.md) | Spec da v4 (Overlay no OBS) |
+| [plans/2026-11-09-despertar-v4-overlay.md](plans/2026-11-09-despertar-v4-overlay.md) | Plano executado da v4 |
 
 ## Status
 
@@ -27,7 +28,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
 | **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | ✅ no `main` |
 | **v3.1 — Duelo** | `!duelo @fulano [ouro]`, melhor de 3, aposta só entre ranks próximos | ✅ no `main` |
-| **v4 — Overlay** | Coluna lateral no OBS com ranking e raid, visual de janela de sistema | 📝 spec escrita, aguardando revisão |
+| **v4 — Overlay** | Coluna lateral no OBS com ranking e raid, visual de janela de sistema | ✅ no ramo `v4-overlay` |
 
 ## v2 — Portais (raids coletivas)
 
@@ -66,8 +67,12 @@ Para decidir no design da v3:
 
 ## v4 — Overlay no OBS
 
-- Página para o OBS: boss e barra de HP da raid, avatares entrando, ranking animado.
-- Um servidor local transmite os eventos do `GameService` (WebSocket); o overlay só exibe.
+- Coluna na lateral direita (`?lado=esquerda` troca), visual de janela de sistema, ícones de classe.
+- Mostra o ranking (top 5) e, durante a raid, só a raid: entrada, barra de HP, caçadores, última
+  rodada e o resultado por 20 s.
+- O bot manda o estado completo do painel por SSE; a página só desenha.
+- **No OBS:** Fonte de Navegador com `http://127.0.0.1:3220/overlay`, 1920×1080, por cima da cena.
+- Para depois: som, fotos da Twitch, duelo no overlay, avisos de nível/rank/forja.
 
 ## Pendências fora das versões
 

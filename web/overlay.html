@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Despertar · overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --glass: rgba(6, 14, 30, 0.84);
+    --line: #4cc9ff;
+    --line-soft: rgba(76, 201, 255, 0.35);
+    --text: #e6f6ff;
+    --muted: #8fb3c9;
+    --gold: #ffd36b;
+    --red: #ff5a6b;
+    --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font-family: Rajdhani, 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+  .rail { position: fixed; top: 40px; right: 40px; width: 380px; display: flex; flex-direction: column; gap: 14px; }
+  .rail.left { right: auto; left: 40px; }
+
+  .win {
+    position: relative; background: var(--glass); border: 1px solid var(--line);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--line) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--line) 8%, transparent);
+    padding: 12px 14px 14px;
+  }
+  .win::before, .win::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--line); }
+  .win::before { top: -4px; left: -4px; border-right: 0; border-bottom: 0; }
+  .win::after { bottom: -4px; right: -4px; border-left: 0; border-top: 0; }
+  .win.enter { animation: open 260ms ease-out; }
+  @keyframes open { from { opacity: 0; transform: translateY(-8px) scaleY(.96); } to { opacity: 1; transform: none; } }
+
+  .title {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 2px;
+    color: var(--line); text-transform: uppercase; border-bottom: 1px solid var(--line-soft); padding-bottom: 8px; margin-bottom: 10px;
+  }
+  .title .sq { width: 8px; height: 8px; background: var(--line); box-shadow: 0 0 6px var(--line); flex: none; }
+  .title .right { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 0; text-transform: none; }
+
+  .row { display: grid; grid-template-columns: 26px 24px 1fr 30px 50px 62px; align-items: center; gap: 6px; height: 30px; font-size: 16px; font-weight: 600; }
+  .row + .row { border-top: 1px solid rgba(76, 201, 255, .1); }
+  .pos { color: var(--muted); font-family: var(--mono); font-size: 13px; text-align: right; }
+  .pos.top { color: var(--gold); }
+  .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rk { font-family: var(--mono); font-size: 12px; text-align: center; border: 1px solid var(--line-soft); color: var(--line); padding: 1px 0; }
+  .lv, .xp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; }
+  .icon { width: 22px; height: 22px; color: var(--line); filter: drop-shadow(0 0 3px rgba(76, 201, 255, .6)); }
+  .foot { margin-top: 10px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+  .foot b { color: var(--text); font-family: var(--mono); font-weight: 500; }
+  .empty { font-size: 15px; color: var(--muted); text-align: center; padding: 8px 0 2px; }
+
+  .alert { text-align: center; padding: 4px 0 10px; }
+  .alert .kind { font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--line); }
+  .alert .boss { font-size: 16px; color: var(--muted); }
+  .hpbar { height: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); position: relative; margin: 6px 0 4px; }
+  .hpbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff3b55, #ff7a7a); box-shadow: 0 0 8px rgba(255, 80, 100, .7); transition: width .7s ease-out; }
+  .hpinfo { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .hunters { margin-top: 10px; }
+  .hunter { display: grid; grid-template-columns: 24px 1fr 60px; gap: 8px; align-items: center; height: 28px; font-size: 16px; font-weight: 600; }
+  .hunter .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hunter .dmg { font-family: var(--mono); font-size: 13px; text-align: right; }
+  .hunter.down { color: #6d7d8a; }
+  .hunter.down .nm { text-decoration: line-through; }
+  .hunter.down .icon { color: var(--red); filter: none; }
+  .log { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .log b { color: var(--text); font-weight: 600; }
+  .countdown { font-family: var(--mono); font-size: 30px; text-align: center; color: var(--text); text-shadow: 0 0 10px rgba(76, 201, 255, .6); }
+  .gold .kind { color: var(--gold); text-shadow: 0 0 10px rgba(255, 211, 107, .6); }
+  .bad .kind { color: var(--red); }
+  .podium .hunter { grid-template-columns: 26px 24px 1fr 118px; }
+  .podium .rew { font-family: var(--mono); font-size: 12px; color: var(--gold); text-align: right; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="guerreiro" viewBox="0 0 24 24"><path d="M14.5 3H21v6.5L10 20.5l-3-3L18 6.5M6 14l4 4M4 20l3-3M8.5 15.5l-3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="mago" viewBox="0 0 24 24"><path d="M6 21L15 12M15 12l2-7 2 2-2 7zM17 5l1-2M20 8l2-1M14 3l1 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="assassino" viewBox="0 0 24 24"><path d="M19 3l-8 8M19 3l-1 5-6 6M9 13l2 2M7 15l2 2-4 4-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="curandeiro" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="tanque" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="rail" id="rail"></div>
+
+<script>
+(() => {
+  // Os nomes vêm do chat: tudo é montado com textContent, nunca com innerHTML.
+  const NS = 'http://www.w3.org/2000/svg';
+  const rail = document.getElementById('rail');
+  if (new URLSearchParams(location.search).get('lado') === 'esquerda') rail.classList.add('left');
+
+  const PORTAL = {
+    azul: { label: 'Portal azul', color: '#4cc9ff' },
+    vermelho: { label: 'Portal vermelho', color: '#ff4d5e' },
+    quebra: { label: 'Quebra de portal', color: '#ffb020' },
+  };
+
+  let state = null;
+  let offset = 0;        // relógio do servidor − relógio local
+  let lastView = '';
+  let lastHpPct = 100;
+
+  const now = () => Date.now() + offset;
+  const clock = (ms) => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+  function icon(classId) {
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'icon');
+    const use = document.createElementNS(NS, 'use');
+    use.setAttribute('href', `#${classId}`);
+    svg.append(use);
+    return svg;
+  }
+  /** Contagem regressiva que o relógio da página atualiza sozinho. */
+  function countdown(tag, cls, target) {
+    const e = el(tag, cls, clock(target - now()));
+    e.dataset.target = String(target);
+    return e;
+  }
+  function win(title, right, color, extraCls) {
+    const w = el('div', `win${extraCls ? ` ${extraCls}` : ''}`);
+    if (color) w.style.setProperty('--line', color);
+    const t = el('div', 'title');
+    t.append(el('span', 'sq'), el('span', '', title));
+    if (right) t.append(typeof right === 'string' ? el('span', 'right', right) : right);
+    w.append(t);
+    return w;
+  }
+  function richLine(parts) {
+    const p = el('div', 'log');
+    for (const part of parts) p.append(typeof part === 'string' ? document.createTextNode(part) : part);
+    return p;
+  }
+
+  function rankingWin(s) {
+    const w = win(`Ranking · Temporada ${s.season}`, 'rank › nv › xp');
+    if (s.ranking.length === 0) w.append(el('div', 'empty', 'Aguardando caçadores · digite !despertar'));
+    s.ranking.forEach((r, i) => {
+      const row = el('div', 'row');
+      row.append(el('span', `pos${i < 3 ? ' top' : ''}`, i + 1), icon(r.classId), el('span', 'name', r.name),
+        el('span', 'rk', r.rank), el('span', 'lv', `Nv ${r.level}`), el('span', 'xp', `${r.xp} XP`));
+      w.append(row);
+    });
+    const foot = el('div', 'foot');
+    if (s.paused) foot.append(el('span', '', 'Jogo pausado'));
+    else if (s.nextPortalAt !== null) foot.append(el('span', '', 'Próximo portal em'), countdown('b', '', s.nextPortalAt));
+    if (foot.childNodes.length > 0) w.append(foot);
+    return w;
+  }
+
+  function hunters(list) {
+    const box = el('div', 'hunters');
+    for (const p of list) {
+      const h = el('div', `hunter${p.down ? ' down' : ''}`);
+      h.append(icon(p.classId), el('span', 'nm', p.name), el('span', 'dmg', p.damage));
+      box.append(h);
+    }
+    return box;
+  }
+
+  function roundLine(r) {
+    const parts = [`Rodada ${r.round}: grupo causou `, el('b', '', r.groupDamage)];
+    if (r.attackers > 0) parts.push(` (${r.attackers} com !atacar)`);
+    if (r.crits.length > 0) parts.push(' · crítico de ', el('b', '', r.crits.join(', ')));
+    if (r.bossHit) {
+      parts.push(' · ', el('b', '', r.bossHit.name),
+        r.bossHit.fell ? ' caiu!' : r.bossHit.tank ? ' segurou o golpe' : ' desviou');
+    }
+    for (const v of r.revived) parts.push(' · ', el('b', '', v.healer), ' levantou ', el('b', '', v.target));
+    return richLine(parts);
+  }
+
+  function raidWin(s) {
+    const r = s.raid;
+    const p = PORTAL[r.type];
+    const alert = el('div', 'alert');
+    alert.append(el('div', 'kind', p.label));
+    if (r.phase === 'entrada') {
+      const w = win('Alerta do sistema', 'entrada', p.color);
+      alert.append(el('div', 'boss', `${r.bossName} · ${r.maxHp} HP`));
+      w.append(alert, countdown('div', 'countdown', r.battleStartsAt));
+      w.append(richLine(['Digite ', el('b', '', '!raid'), ` para entrar · ${r.participants.length} ${r.participants.length === 1 ? 'caçador' : 'caçadores'}`]));
+      if (r.participants.length > 0) w.append(hunters(r.participants));
+      return w;
+    }
+    const right = el('span', 'right');
+    right.append(`rodada ${r.round}/${r.totalRounds}`);
+    if (r.nextRoundAt !== null) right.append(' · ', countdown('span', '', r.nextRoundAt));
+    const w = win('Alerta do sistema', right, p.color);
+    alert.append(el('div', 'boss', r.bossName));
+    const pct = Math.max(0, Math.min(100, (100 * r.hp) / r.maxHp));
+    const bar = el('div', 'hpbar');
+    const fill = el('i');
+    fill.style.width = `${lastHpPct}%`;
+    bar.append(fill);
+    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = `${pct}%`; }));
+    lastHpPct = pct;
+    const info = el('div', 'hpinfo');
+    info.append(el('span', '', 'HP'), el('span', '', `${r.hp} / ${r.maxHp}`));
+    w.append(alert, bar, info, hunters(r.participants));
+    if (r.lastRound) w.append(roundLine(r.lastRound));
+    return w;
+  }
+
+  const ENDING = {
+    vitoria: { title: 'Portal limpo', big: 'Vitória', cls: 'gold', sub: (r) => `${r.bossName} derrotado` },
+    derrota: { title: 'Alerta do sistema', big: 'Tempo esgotado', cls: 'bad', sub: (r) => `${r.bossName} sobreviveu com ${r.hp} HP` },
+    'todos-caidos': { title: 'Alerta do sistema', big: 'Todos caíram', cls: 'bad', sub: (r) => `${r.bossName} venceu com ${r.hp} HP` },
+    quebra: { title: 'Alerta do sistema', big: 'Quebra de portal', cls: 'bad', sub: (r) => `${r.bossName} escapou · todos lesionados` },
+    vazio: { title: 'Alerta do sistema', big: 'Portal fechado', cls: '', sub: () => 'Ninguém entrou' },
+  };
+
+  function resultWin(s) {
+    const r = s.result;
+    const e = ENDING[r.outcome];
+    const note = r.outcome === 'vitoria' && r.fragmentsTop > 0
+      ? (r.podium.length > 1 ? `💎 +${r.fragmentsEach} cada (1º +${r.fragmentsTop})` : `💎 +${r.fragmentsTop}`)
+      : '';
+    const w = win(e.title, note, PORTAL[r.type].color, e.cls);
+    const alert = el('div', 'alert');
+    alert.append(el('div', 'kind', e.big), el('div', 'boss', e.sub(r)));
+    w.append(alert);
+    if (r.podium.length > 0) {
+      const box = el('div', 'hunters podium');
+      r.podium.forEach((p, i) => {
+        const h = el('div', 'hunter');
+        h.append(el('span', 'pos top', i + 1), icon(p.classId), el('span', 'nm', `${p.name} · ${p.damage}`),
+          el('span', 'rew', `+${p.xp} XP +${p.gold} ouro`));
+        box.append(h);
+      });
+      w.append(box);
+    }
+    return w;
+  }
+
+  function viewOf(s) {
+    if (s.raid) return `raid-${s.raid.phase}`;
+    if (s.result && now() < s.result.until) return 'result';
+    return 'ranking';
+  }
+
+  function render() {
+    if (!state) return;
+    const view = viewOf(state);
+    const node = view === 'ranking' ? rankingWin(state) : view === 'result' ? resultWin(state) : raidWin(state);
+    if (view !== lastView) node.classList.add('enter');
+    if (!view.startsWith('raid')) lastHpPct = 100;
+    lastView = view;
+    rail.replaceChildren(node);
+  }
+
+  // Contagens regressivas e o fim do painel de resultado, sem esperar o servidor.
+  setInterval(() => {
+    for (const e of rail.querySelectorAll('[data-target]')) e.textContent = clock(Number(e.dataset.target) - now());
+    if (state && viewOf(state) !== lastView) render();
+  }, 250);
+
+  const events = new EventSource('/overlay/events');
+  events.onmessage = (msg) => {
+    state = JSON.parse(msg.data);
+    offset = state.serverNow - Date.now();
+    render();
+  };
+})();
+</script>
+</body>
+</html>
