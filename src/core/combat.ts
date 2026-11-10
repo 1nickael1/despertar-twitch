@@ -1,4 +1,5 @@
 import type { Balance } from '../config/balance';
+import { armorFactor, rollFragmentDrop, weaponBonus } from './equipment';
 import { applyXp } from './progression';
 import { chance, pick, rollD20, type Rng } from './rng';
 import { injuryChance, primaryStat } from './stats';
@@ -16,6 +17,8 @@ export interface HuntOutcome {
   goldGained: number;
   injured: boolean;
   levelsGained: number;
+  /** Fragmento dropado (rank do monstro) ou null. */
+  fragmentRank: number | null;
   hunter: Hunter;
 }
 
@@ -27,8 +30,8 @@ function rollMonsterRank(h: Hunter, b: Balance, rng: Rng): number {
 }
 
 /**
- * Ordem dos sorteios: rank do monstro, nome, d20 do jogador, d20 do monstro,
- * e (só em derrota com chance > 0) lesão.
+ * Ordem dos sorteios: rank do monstro, nome, d20 do jogador, d20 do monstro e então,
+ * na vitória, o drop do fragmento; na derrota (só com chance > 0), a lesão.
  */
 export function resolveHunt(h: Hunter, b: Balance, rng: Rng, now: number): HuntOutcome {
   const cls = b.classes[h.classId];
@@ -36,7 +39,7 @@ export function resolveHunt(h: Hunter, b: Balance, rng: Rng, now: number): HuntO
   const monsterName = pick(rng, b.monsters[monsterRank]);
   const playerRoll = rollD20(rng);
   const bonus = monsterRank > h.rank ? cls.bonusVsHigherRank : 0;
-  const playerPower = primaryStat(h.classId, h.level, b) + bonus + playerRoll;
+  const playerPower = primaryStat(h.classId, h.level, b) + bonus + weaponBonus(h, b) + playerRoll;
   const monsterPower = b.hunt.difficultyByRank[monsterRank] + rollD20(rng);
   const won = playerPower >= monsterPower;
   const base = { monsterName, monsterRank, playerRoll, playerPower, monsterPower };
@@ -47,14 +50,15 @@ export function resolveHunt(h: Hunter, b: Balance, rng: Rng, now: number): HuntO
     const mult = crit ? 2 : 1;
     const xpGained = b.hunt.xpByRank[monsterRank] * mult;
     const goldGained = b.hunt.goldByRank[monsterRank] * mult;
+    const fragmentRank = rollFragmentDrop(rng, b) ? monsterRank : null;
     const { hunter, levelsGained } = applyXp({ ...hunted, gold: hunted.gold + goldGained }, xpGained, b);
-    return { ...base, won, crit, xpGained, goldGained, injured: false, levelsGained, hunter };
+    return { ...base, won, crit, xpGained, goldGained, injured: false, levelsGained, fragmentRank, hunter };
   }
 
   const xpGained = Math.floor(b.hunt.xpByRank[monsterRank] * cls.lossXpFraction);
-  const p = injuryChance(h.classId, b);
+  const p = injuryChance(h.classId, b) * armorFactor(h, b);
   const injured = p > 0 && chance(rng, p);
   const afterLoss: Hunter = injured ? { ...hunted, injuredUntil: now + b.hunt.injuryMs } : hunted;
   const { hunter, levelsGained } = applyXp(afterLoss, xpGained, b);
-  return { ...base, won, crit: false, xpGained, goldGained: 0, injured, levelsGained, hunter };
+  return { ...base, won, crit: false, xpGained, goldGained: 0, injured, levelsGained, fragmentRank: null, hunter };
 }

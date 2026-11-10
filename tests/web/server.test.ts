@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHandler, TestBench } from '../../src/web/server';
 import { d20, ScriptedRng, testBalance } from '../helpers';
 
-const WIN = [0.5, 0, d20(20), d20(1)];
+const WIN = [0.5, 0, d20(20), d20(1), 0.99]; // 0.99 = sem drop de fragmento
 
 describe('tela de teste local', () => {
   let server: Server;

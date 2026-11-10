@@ -9,7 +9,7 @@ import { d20, FakeClock, ScriptedRng, testBalance } from '../helpers';
 const ana: Author = { userId: 'u-ana', displayName: 'ana' };
 const bia: Author = { userId: 'u-bia', displayName: 'bia' };
 
-const WIN = [0.5, 0, d20(20), d20(1)];
+const WIN = [0.5, 0, d20(20), d20(1), 0.99]; // 0.99 = sem drop de fragmento
 const LOSS_INJURED = [0.5, 0, d20(1), d20(20), 0];
 const CLASS_GUERREIRO = 0;
 const CLASS_MAGO = 0.3;

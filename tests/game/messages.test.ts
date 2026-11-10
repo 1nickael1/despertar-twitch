@@ -6,7 +6,7 @@ import { makeHunter } from '../helpers';
 const outcome = (o: Partial<HuntOutcome> = {}): HuntOutcome => ({
   monsterName: 'Lobo de Gelo', monsterRank: 1, playerRoll: 15, playerPower: 27, monsterPower: 21,
   won: true, crit: false, xpGained: 15, goldGained: 5, injured: false, levelsGained: 0,
-  hunter: makeHunter(), ...o,
+  fragmentRank: null, hunter: makeHunter(), ...o,
 });
 
 describe('fmtDuration', () => {

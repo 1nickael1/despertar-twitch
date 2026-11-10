@@ -9,12 +9,15 @@ const NOW = 10_000;
 const SAME_RANK = 0.5;
 const LOWER_RANK = 0;
 const HIGHER_RANK = 0.99;
+const NO_DROP = 0.99;
+const DROP = 0;
 
 describe('resolveHunt', () => {
   it('vitória: XP e ouro do rank do monstro, marca a caçada', () => {
-    const rng = seqRng([SAME_RANK, 0, d20(20), d20(1)]);
+    const rng = seqRng([SAME_RANK, 0, d20(20), d20(1), NO_DROP]);
     const o = resolveHunt(makeHunter(), b, rng, NOW);
     expect(o.won).toBe(true);
+    expect(o.fragmentRank).toBeNull();
     expect(o.monsterRank).toBe(0);
     expect(o.monsterName).toBe(b.monsters[0][0]);
     expect(o.xpGained).toBe(b.hunt.xpByRank[0]);
@@ -52,7 +55,7 @@ describe('resolveHunt', () => {
 
   it('Assassino: crítico dobra XP e ouro', () => {
     const critMin = b.classes.assassino.critMin!;
-    const o = resolveHunt(makeHunter({ classId: 'assassino' }), b, seqRng([SAME_RANK, 0, d20(critMin), d20(1)]), NOW);
+    const o = resolveHunt(makeHunter({ classId: 'assassino' }), b, seqRng([SAME_RANK, 0, d20(critMin), d20(1), NO_DROP]), NOW);
     expect(o.won).toBe(true);
     expect(o.crit).toBe(true);
     expect(o.xpGained).toBe(b.hunt.xpByRank[0] * 2);
@@ -61,12 +64,12 @@ describe('resolveHunt', () => {
 
   it('Assassino: abaixo da faixa de crítico não critica', () => {
     const critMin = b.classes.assassino.critMin!;
-    const o = resolveHunt(makeHunter({ classId: 'assassino' }), b, seqRng([SAME_RANK, 0, d20(critMin - 1), d20(1)]), NOW);
+    const o = resolveHunt(makeHunter({ classId: 'assassino' }), b, seqRng([SAME_RANK, 0, d20(critMin - 1), d20(1), NO_DROP]), NOW);
     expect(o.crit).toBe(false);
   });
 
   it('Guerreiro ganha bônus contra monstro de rank acima', () => {
-    const o = resolveHunt(makeHunter(), b, seqRng([HIGHER_RANK, 0, d20(4), d20(1)]), NOW);
+    const o = resolveHunt(makeHunter(), b, seqRng([HIGHER_RANK, 0, d20(4), d20(1), NO_DROP]), NOW);
     expect(o.monsterRank).toBe(1);
     expect(o.playerPower).toBe(primaryStat('guerreiro', 1, b) + b.classes.guerreiro.bonusVsHigherRank + 4);
     expect(o.monsterPower).toBe(b.hunt.difficultyByRank[1] + 1);
@@ -79,16 +82,41 @@ describe('resolveHunt', () => {
   });
 
   it('rank do monstro fica dentro de F..S', () => {
-    const atF = resolveHunt(makeHunter({ rank: 0 }), b, seqRng([LOWER_RANK, 0, d20(10), d20(10)]), NOW);
+    const atF = resolveHunt(makeHunter({ rank: 0 }), b, seqRng([LOWER_RANK, 0, d20(10), d20(10), NO_DROP]), NOW);
     expect(atF.monsterRank).toBe(0);
-    const atS = resolveHunt(makeHunter({ rank: 6, level: 30 }), b, seqRng([HIGHER_RANK, 0, d20(10), d20(10)]), NOW);
+    const atS = resolveHunt(makeHunter({ rank: 6, level: 30 }), b, seqRng([HIGHER_RANK, 0, d20(10), d20(10), NO_DROP]), NOW);
     expect(atS.monsterRank).toBe(6);
   });
 
   it('vitória pode subir de nível', () => {
     const h = makeHunter({ xp: xpToNext(1, b) - 1 });
-    const o = resolveHunt(h, b, seqRng([SAME_RANK, 0, d20(20), d20(1)]), NOW);
+    const o = resolveHunt(h, b, seqRng([SAME_RANK, 0, d20(20), d20(1), NO_DROP]), NOW);
     expect(o.levelsGained).toBe(1);
     expect(o.hunter.level).toBe(2);
+  });
+
+  it('vitória pode dropar fragmento do rank do monstro', () => {
+    const o = resolveHunt(makeHunter(), b, seqRng([HIGHER_RANK, 0, d20(20), d20(1), DROP]), NOW);
+    expect(o.won).toBe(true);
+    expect(o.fragmentRank).toBe(1);
+  });
+
+  it('arma soma no poder', () => {
+    const o = resolveHunt(makeHunter({ weaponId: 'arma-f-forjada' }), b, seqRng([SAME_RANK, 0, d20(5), d20(8), NO_DROP]), NOW);
+    expect(o.playerPower).toBe(primaryStat('guerreiro', 1, b) + 2 + 5);
+    expect(o.won).toBe(true);
+  });
+
+  it('armadura reduz a chance de lesão', () => {
+    // Guerreiro: 0,32 sem armadura; com a forjada ×0,7 = 0,224. Sorteio 0,25 lesiona só sem armadura.
+    const loss = [SAME_RANK, 0, d20(1), d20(20), 0.25];
+    expect(resolveHunt(makeHunter(), b, seqRng(loss), NOW).injured).toBe(true);
+    expect(resolveHunt(makeHunter({ armorId: 'armadura-f-forjada' }), b, seqRng(loss), NOW).injured).toBe(false);
+  });
+
+  it('derrota não sorteia drop', () => {
+    const rng = seqRng([SAME_RANK, 0, d20(1), d20(20), 0.99]);
+    expect(resolveHunt(makeHunter(), b, rng, NOW).fragmentRank).toBeNull();
+    expect(rng.remaining).toBe(0);
   });
 });
