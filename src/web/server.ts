@@ -5,13 +5,14 @@ import { toAdminCommand, type AdminCommand } from '../commands/admin';
 import { parseCommand } from '../commands/parse';
 import type { Balance } from '../config/balance';
 import type { Clock } from '../core/clock';
+import { equipmentById, ownedFragments } from '../core/equipment';
 import { isAtCap, xpToNext } from '../core/progression';
 import { sortRanking } from '../core/ranking';
 import { mathRng, type Rng } from '../core/rng';
 import { MAX_RANK, rankLetter, type Hunter, type PortalType } from '../core/types';
 import { openDatabase, SqliteGameRepository } from '../data/sqlite-repository';
 import { AdminRefusal, GameService } from '../game/game-service';
-import { fmtDuration } from '../game/messages';
+import { fmtDuration, msg } from '../game/messages';
 
 const NAME_PATTERN = /^[A-Za-z0-9_]{1,25}$/;
 const MAX_BODY_BYTES = 10_000;
@@ -27,6 +28,10 @@ export interface HunterView {
   xpToNext: number | null;
   gold: number;
   potions: number;
+  /** Arma e armadura equipadas ('—' = nada). */
+  gear: string;
+  /** Fragmentos por rank ('—' = nenhum). */
+  fragments: string;
   status: string;
 }
 
@@ -170,6 +175,14 @@ export class TestBench {
     const title = h.equippedTitleId
       ? (this.repo.getTitles(h.userId).find((t) => t.titleId === h.equippedTitleId)?.label ?? null)
       : null;
+    const owned = this.repo.getItems(h.userId);
+    const gear = msg.statusGear(
+      h.weaponId ? equipmentById(h.weaponId, b) : null,
+      h.armorId ? equipmentById(h.armorId, b) : null,
+    );
+    const fragments = ownedFragments(owned)
+      .map((f) => `${rankLetter(f.rank)} ×${f.qty}`)
+      .join(' ');
     return {
       name: h.displayName,
       classLabel: b.classes[h.classId].label,
@@ -179,7 +192,9 @@ export class TestBench {
       xp: h.xp,
       xpToNext: atCap ? null : xpToNext(h.level, b),
       gold: h.gold,
-      potions: this.repo.getItems(h.userId).pocao ?? 0,
+      potions: owned.pocao ?? 0,
+      gear: gear || '—',
+      fragments: fragments || '—',
       status,
     };
   }

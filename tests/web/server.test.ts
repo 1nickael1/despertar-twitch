@@ -63,7 +63,7 @@ describe('tela de teste local', () => {
     expect(r.replies[0]).toContain('despertou');
     const s = await state();
     expect(s.season.number).toBe(1);
-    expect(s.hunters).toEqual([expect.objectContaining({ name: 'ana', rank: 'F' })]);
+    expect(s.hunters).toEqual([expect.objectContaining({ name: 'ana', rank: 'F', gear: '—', fragments: '—' })]);
   });
 
   it('texto que não é comando é ignorado', async () => {

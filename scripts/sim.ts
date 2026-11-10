@@ -3,6 +3,7 @@ import { resolveHunt } from '../src/core/combat';
 import { createHunter } from '../src/core/hunter';
 import { isAtCap, levelCap, rankFloor } from '../src/core/progression';
 import { resolveReevaluation } from '../src/core/reevaluation';
+import { equipmentId, type Quality } from '../src/core/equipment';
 import { joinRaid, markAttack, openRaid, resolveRound } from '../src/core/raid';
 import { chance, createSeededRng } from '../src/core/rng';
 import { CLASS_IDS, MAX_RANK, PORTAL_TYPES, RANKS, type ClassId, type PortalType } from '../src/core/types';
@@ -30,7 +31,7 @@ interface Rate {
 const pct = (r: Rate) => (r.total > 0 ? `${Math.round((100 * r.wins) / r.total)}%` : '—');
 const avg = (xs: number[]) => (xs.length > 0 ? Math.round(xs.reduce((sum, x) => sum + x, 0) / xs.length) : '—');
 
-function simulateClass(classId: ClassId) {
+function simulateClass(classId: ClassId, quality: Quality | null = null) {
   const huntsToRank = RANKS.map((): number[] => []);
   const atFloor = RANKS.map((): Rate => ({ wins: 0, total: 0 }));
   const beforeCap = RANKS.map((): Rate => ({ wins: 0, total: 0 }));
@@ -46,6 +47,7 @@ function simulateClass(classId: ClassId) {
         for (let k = from + 1; k <= h.rank; k++) huntsToRank[k].push(hunts);
         continue;
       }
+      if (quality) h = { ...h, weaponId: equipmentId('arma', h.rank, quality), armorId: equipmentId('armadura', h.rank, quality) };
       const { rank, level } = h;
       const o = resolveHunt(h, b, rng, 0);
       hunts++;
@@ -71,9 +73,20 @@ function simulateClass(classId: ClassId) {
 
 console.log(`Simulação: ${PLAYERS} jogadores por classe · seed ${seed}`);
 console.log('Meta: ~230 caçadas até o Rank S; ~55% de vitória no piso e ~80% antes do teto.');
+console.log('Colunas: vitória no piso / antes do teto, sem equipamento, com comum e com forjado (sempre do rank atual).');
 for (const classId of CLASS_IDS) {
+  const runs = [simulateClass(classId), simulateClass(classId, 'comum'), simulateClass(classId, 'forjada')];
+  const cell = (row: Record<string, string | number>) => `${row['vitória no piso']} / ${row['vitória antes do teto']}`;
   console.log(`\n== ${b.classes[classId].label} ==`);
-  console.table(simulateClass(classId));
+  console.table(
+    runs[0].map((row, r) => ({
+      rank: row.rank,
+      'caçadas até chegar': row['caçadas até chegar (média)'],
+      'sem equip': cell(row),
+      comum: cell(runs[1][r]),
+      forjado: cell(runs[2][r]),
+    })),
+  );
 }
 
 function simulateRaid(type: PortalType, attackRate: number): string {

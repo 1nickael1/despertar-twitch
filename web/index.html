@@ -143,6 +143,9 @@
         <button type="button" data-cmd="!inventario">!inventario</button>
         <button type="button" data-cmd="!raid">!raid</button>
         <button type="button" data-cmd="!atacar">!atacar</button>
+        <button type="button" data-cmd="!comprar arma">!comprar arma</button>
+        <button type="button" data-cmd="!forjar arma">!forjar arma</button>
+        <button type="button" data-cmd="!forjar armadura">!forjar armadura</button>
         <button type="button" id="give-gold">+100 ouro (teste)</button>
       </div>
     </form>
@@ -191,7 +194,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>#</th><th>Nome</th><th>Classe</th><th>Rank</th><th>Nv</th><th>XP</th><th>Ouro</th><th>Poções</th><th>Situação</th></tr>
+            <tr><th>#</th><th>Nome</th><th>Classe</th><th>Rank</th><th>Nv</th><th>XP</th><th>Ouro</th><th>Poções</th><th>Equip.</th><th>💎</th><th>Situação</th></tr>
           </thead>
           <tbody id="hunters"></tbody>
         </table>
@@ -283,13 +286,15 @@
         h.xpToNext === null ? `${h.xp} (guardado)` : `${h.xp}/${h.xpToNext}`,
         h.gold,
         h.potions,
+        h.gear,
+        h.fragments,
         h.status,
       ];
       cells.forEach((value, idx) => {
         const td = document.createElement('td');
         td.textContent = value;
         if (idx === 3) td.className = 'rank';
-        if (idx === 8) td.className = 'status';
+        if (idx === 10) td.className = 'status';
         tr.append(td);
       });
       tbody.append(tr);

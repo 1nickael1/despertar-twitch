@@ -13,6 +13,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [specs/2026-11-09-despertar-v2-portais-design.md](specs/2026-11-09-despertar-v2-portais-design.md) | Spec da v2 (Portais) |
 | [plans/2026-11-09-despertar-v2-portais.md](plans/2026-11-09-despertar-v2-portais.md) | Plano executado da v2 |
 | [specs/2026-11-09-despertar-v3-equipamento-design.md](specs/2026-11-09-despertar-v3-equipamento-design.md) | Spec da v3 (Equipamento e forja) |
+| [plans/2026-11-09-despertar-v3-equipamento.md](plans/2026-11-09-despertar-v3-equipamento.md) | Plano executado da v3 |
 
 ## Status
 
@@ -21,7 +22,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | **v1 — Despertar** | Ranks F→S, 5 classes, `!cacar`, `!reavaliar`, temporadas de 14 dias, títulos, ranking, administração só pelo terminal, renovação automática do token | ✅ no `main` |
 | **v1.1 — Loja** | `!loja`, `!comprar`, `!usar` / `!pocao`, `!inventario`; Poção de Cura (zera descanso, lesão e reavaliação; uma vitória nunca paga uma) | ✅ no `main` |
 | **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; rankings em uma mensagem só, com medalhas e pontuação | ✅ no `main` |
-| **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | 📝 spec escrita, aguardando revisão |
+| **v3 — Equipamento** | Arma e armadura, loja do rank, fragmentos, `!forjar`, `!equipar` | ✅ no ramo `v3-equipamento` |
 | **v3.1 — Duelo** | `!duelo @fulano` com aposta, usando o equipamento | ⏳ |
 | **v4 — Overlay** | Tela no OBS | ⏳ |
 
@@ -71,4 +72,5 @@ Para decidir no design da v3:
   `!despertar` no canal. Até agora o bot foi testado no console e na tela local.
 - **HP do boss escalando** com número de jogadores e rank, quando o chat crescer (spec v2, seção 11).
 - **Balanceamento das classes** (`npm run sim`): o Mago passa de 90% de vitória no fim de cada rank;
-  Curandeiro e Tanque caem para ~40% no começo dos ranks altos. Bom tema para uma live de ajuste.
+  Curandeiro e Tanque caem para ~40% no começo dos ranks altos. Com o forjado da v3 o Mago chega a 98%
+  antes do teto nos ranks B e A. Bom tema para uma live de ajuste.
