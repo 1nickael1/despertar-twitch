@@ -4,6 +4,19 @@ import type { Balance } from '../config/balance';
 import type { Clock } from '../core/clock';
 import { resolveHunt } from '../core/combat';
 import { createHunter } from '../core/hunter';
+import {
+  buyEquipment,
+  canEquip,
+  equip,
+  equipmentById,
+  equipmentPrice,
+  findOwnedEquipment,
+  forgeEquipment,
+  fragmentId,
+  getEquipment,
+  ownedEquipment,
+  ownedFragments,
+} from '../core/equipment';
 import { isAtCap, levelCap, xpToNext } from '../core/progression';
 import {
   applyRaidReward,
@@ -22,9 +35,19 @@ import { resolveReevaluation } from '../core/reevaluation';
 import { pick, type Rng } from '../core/rng';
 import { closeSeason, newSeason } from '../core/season';
 import { buyItem, findItem, healHunter, itemIds, itemPrice } from '../core/shop';
-import { CLASS_IDS, MAX_RANK, type Hunter, type PortalType, type Season } from '../core/types';
+import {
+  CLASS_IDS,
+  EQUIPMENT_SLOTS,
+  isEquipmentSlot,
+  MAX_RANK,
+  rankLetter,
+  type EquipmentSlot,
+  type Hunter,
+  type PortalType,
+  type Season,
+} from '../core/types';
 import type { GameRepository } from '../data/repository';
-import { fmtDuration, msg, RANKING_SIZE } from './messages';
+import { fmtDuration, gearPower, msg, RANKING_SIZE } from './messages';
 
 /** Quem fala no chat. De propósito não existe "moderador": o chat nunca administra o jogo. */
 export interface Author {
@@ -50,6 +73,8 @@ const BLOCKED_WHEN_PAUSED = new Set<Command['kind']>([
   'usar',
   'raid',
   'atacar',
+  'forjar',
+  'equipar',
 ]);
 
 export class GameService {
@@ -216,6 +241,10 @@ export class GameService {
         return this.joinRaidCommand(h, now);
       case 'atacar':
         return this.attack(h);
+      case 'forjar':
+        return [this.forge(h, cmd.slot, cmd.rank)];
+      case 'equipar':
+        return [this.equipCommand(h, cmd.arg)];
       default:
         return [];
     }
@@ -285,6 +314,10 @@ export class GameService {
       for (const r of rewards) {
         const h = repo.getHunter(r.userId);
         if (h) repo.saveHunter(applyRaidReward(h, r, b).hunter);
+        if (h && r.fragments > 0) {
+          const id = fragmentId(r.rank);
+          repo.setItemQty(r.userId, id, (repo.getItems(r.userId)[id] ?? 0) + r.fragments);
+        }
       }
       if (broke) for (const h of repo.listHunters()) repo.saveHunter(breakPenalty(h, now, b));
     });
@@ -354,12 +387,22 @@ export class GameService {
       description: b.shop.items[id].description,
       price: itemPrice(id, h.rank, b),
     }));
-    return msg.shop(h.displayName, h.rank, entries);
+    const gear = EQUIPMENT_SLOTS.map((slot) => {
+      const item = getEquipment(slot, h.rank, 'comum', b);
+      return {
+        id: slot,
+        label: `${item.label} [${rankLetter(item.rank)}]`,
+        description: gearPower(item),
+        price: equipmentPrice(slot, h.rank, b),
+      };
+    });
+    return msg.shop(h.displayName, h.rank, [...entries, ...gear]);
   }
 
   private buy(h: Hunter, itemQuery: string, qty: number): string {
     const { repo, balance: b } = this.deps;
     if (!itemQuery) return msg.buyUsage(h.displayName);
+    if (isEquipmentSlot(itemQuery)) return this.buyGear(h, itemQuery);
     const id = findItem(itemQuery, b);
     if (!id) return msg.itemNotFound(h.displayName);
     const label = b.shop.items[id].label;
@@ -410,7 +453,62 @@ export class GameService {
     const items = itemIds(b)
       .filter((id) => (owned[id] ?? 0) > 0)
       .map((id) => ({ label: b.shop.items[id].label, qty: owned[id] }));
-    return msg.inventory(h.displayName, h.gold, items);
+    const gear = ownedEquipment(owned, b).map((item) => ({
+      item,
+      equipped: item.id === h.weaponId || item.id === h.armorId,
+    }));
+    return msg.inventory(h.displayName, h.gold, items, ownedFragments(owned), gear);
+  }
+
+  // ---------- equipamento ----------
+
+  private buyGear(h: Hunter, slot: EquipmentSlot): string {
+    const { repo, balance: b } = this.deps;
+    const r = buyEquipment(h, slot, repo.getItems(h.userId), b);
+    if (!r.ok) {
+      return r.reason === 'owned'
+        ? msg.alreadyOwn(h.displayName, r.item)
+        : msg.notEnoughGold(h.displayName, r.item.label, 1, r.price, h.gold);
+    }
+    repo.transaction(() => {
+      repo.saveHunter(r.hunter);
+      repo.setItemQty(h.userId, r.item.id, 1);
+    });
+    return msg.boughtGear(h.displayName, r.item, r.price, r.equipped, r.hunter.gold);
+  }
+
+  private forge(h: Hunter, slot: EquipmentSlot | null, rank: number | null): string {
+    const { repo, balance: b } = this.deps;
+    if (!slot) return msg.forgeUsage(h.displayName);
+    const r = forgeEquipment(h, slot, rank, repo.getItems(h.userId), b);
+    if (!r.ok) {
+      switch (r.reason) {
+        case 'rank':
+          return msg.forgeRank(h.displayName, r.maxRank);
+        case 'owned':
+          return msg.alreadyOwn(h.displayName, r.item);
+        case 'fragments':
+          return msg.forgeFragments(h.displayName, r.rank, r.have, r.need);
+        case 'gold':
+          return msg.forgeGold(h.displayName, r.need, r.have);
+      }
+    }
+    repo.transaction(() => {
+      repo.saveHunter(r.hunter);
+      repo.setItemQty(h.userId, r.item.id, 1);
+      repo.setItemQty(h.userId, fragmentId(r.item.rank), r.fragmentsLeft);
+    });
+    return msg.forged(h.displayName, r.item, r.cost, r.equipped, r.fragmentsLeft);
+  }
+
+  private equipCommand(h: Hunter, arg: string): string {
+    const { repo, balance: b } = this.deps;
+    if (!arg.trim()) return msg.equipUsage(h.displayName);
+    const item = findOwnedEquipment(arg, repo.getItems(h.userId), b);
+    if (!item) return msg.equipNotFound(h.displayName);
+    if (!canEquip(item, h)) return msg.equipRank(h.displayName, item);
+    repo.saveHunter(equip(h, item));
+    return msg.equipped(h.displayName, item);
   }
 
   private syncName(h: Hunter, displayName: string): Hunter {
@@ -450,7 +548,14 @@ export class GameService {
       return this.notifyOnce(`${h.userId}:cooldown`, readyAt, msg.onCooldown(h.displayName, readyAt - now));
     }
     const o = resolveHunt(h, b, this.deps.rng, now);
-    this.deps.repo.saveHunter(o.hunter);
+    const { repo } = this.deps;
+    repo.transaction(() => {
+      repo.saveHunter(o.hunter);
+      if (o.fragmentRank !== null) {
+        const id = fragmentId(o.fragmentRank);
+        repo.setItemQty(h.userId, id, (repo.getItems(h.userId)[id] ?? 0) + 1);
+      }
+    });
     let text = o.won ? msg.huntWin(h.displayName, o) : msg.huntLoss(h.displayName, o, b.hunt.injuryMs);
     if (o.levelsGained > 0) {
       text += msg.levelUpSuffix(o.hunter.level);
@@ -502,6 +607,10 @@ export class GameService {
       xpText: atCap ? `${h.xp} XP guardado` : `${h.xp}/${xpToNext(h.level, b)} XP`,
       gold: h.gold,
       state,
+      gear: msg.statusGear(
+        h.weaponId ? equipmentById(h.weaponId, b) : null,
+        h.armorId ? equipmentById(h.armorId, b) : null,
+      ),
     });
   }
 
