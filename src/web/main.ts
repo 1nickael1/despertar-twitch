@@ -13,9 +13,21 @@ const dataDir = join(ROOT, 'data');
 mkdirSync(dataDir, { recursive: true });
 const bench = new TestBench(loadBalance(BALANCE_PATH), join(dataDir, 'web.db'));
 const indexPath = join(ROOT, 'web', 'index.html');
+const overlayPath = join(ROOT, 'web', 'overlay.html');
 
 // Lê o HTML a cada visita: dá para editar a página sem reiniciar o servidor.
-const server = createServer(createHandler(bench, () => readFileSync(indexPath, 'utf8')));
+const server = createServer(
+  createHandler(
+    bench,
+    () => readFileSync(indexPath, 'utf8'),
+    () => readFileSync(overlayPath, 'utf8'),
+  ),
+);
+
+// Relógio do jogo mesmo com só o overlay aberto; keep-alive das conexões do overlay.
+setInterval(() => bench.pulse(), 1_000);
+setInterval(() => bench.overlay.keepAlive(), 15_000);
 server.listen(PORT, HOST, () => {
   console.log(`[web] Tela de teste em http://${HOST}:${PORT} (só nesta máquina). Ctrl+C para sair.`);
+  console.log(`[web] Overlay de teste em http://${HOST}:${PORT}/overlay`);
 });

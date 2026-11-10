@@ -13,6 +13,9 @@ import { MAX_RANK, rankLetter, type Hunter, type PortalType } from '../core/type
 import { openDatabase, SqliteGameRepository } from '../data/sqlite-repository';
 import { AdminRefusal, GameService } from '../game/game-service';
 import { fmtDuration, msg } from '../game/messages';
+import { OverlayHub } from '../overlay/hub';
+import { handleOverlayRoute } from '../overlay/server';
+import { buildOverlaySnapshot, type OverlaySnapshot } from '../overlay/snapshot';
 
 const NAME_PATTERN = /^[A-Za-z0-9_]{1,25}$/;
 const MAX_BODY_BYTES = 10_000;
@@ -64,6 +67,8 @@ export interface BenchState {
 export class TestBench {
   private offsetMs = 0;
   private pending: string[] = [];
+  /** Overlay ligado ao jogo de teste (o relógio adiantado vale para ele também). */
+  readonly overlay = new OverlayHub(() => this.overlaySnapshot());
   private readonly clock: Clock = { now: () => Date.now() + this.offsetMs };
   private db!: Database.Database;
   private repo!: SqliteGameRepository;
@@ -121,6 +126,16 @@ export class TestBench {
   /** Roda o relógio do jogo; os anúncios ficam guardados até a página pedir o estado. */
   private tick(): void {
     this.pending.push(...this.game.tick());
+  }
+
+  overlaySnapshot(): OverlaySnapshot {
+    return buildOverlaySnapshot(this.game, this.repo, this.balance, this.clock.now());
+  }
+
+  /** Relógio do jogo sem a página aberta: guarda os anúncios para a página e atualiza o overlay. */
+  pulse(): void {
+    this.tick();
+    this.overlay.publish();
   }
 
   state(): BenchState {
@@ -235,10 +250,11 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
   }
 }
 
-export function createHandler(bench: TestBench, getIndexHtml: () => string) {
+export function createHandler(bench: TestBench, getIndexHtml: () => string, getOverlayHtml: () => string = () => '') {
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
     try {
-      const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
+      if (handleOverlayRoute(req, res, bench.overlay, getOverlayHtml)) return;
 
       if (req.method === 'GET' && path === '/') return send(res, 200, getIndexHtml(), 'text/html; charset=utf-8');
       if (req.method === 'GET' && path === '/api/state') return json(res, 200, bench.state());
@@ -294,6 +310,9 @@ export function createHandler(bench: TestBench, getIndexHtml: () => string) {
       if (err instanceof HttpError) return json(res, err.status, { error: err.message });
       console.error('[web] erro:', err instanceof Error ? err.message : err);
       return json(res, 500, { error: 'Erro interno. Veja o terminal do servidor.' });
+    } finally {
+      // Qualquer chamada da página pode ter mudado o jogo: o overlay recebe o estado novo se mudou.
+      if (path.startsWith('/api/')) bench.overlay.publish();
     }
   };
 }

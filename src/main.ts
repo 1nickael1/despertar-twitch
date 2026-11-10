@@ -1,5 +1,5 @@
 import { config as loadDotenv } from 'dotenv';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,9 @@ import { systemClock } from './core/clock';
 import { mathRng } from './core/rng';
 import { openDatabase, SqliteGameRepository } from './data/sqlite-repository';
 import { AdminRefusal, GameService } from './game/game-service';
+import { OverlayHub } from './overlay/hub';
+import { startOverlayServer } from './overlay/server';
+import { buildOverlaySnapshot } from './overlay/snapshot';
 import { TokenManager } from './twitch/token';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -28,7 +31,27 @@ async function main(): Promise<void> {
   const dataDir = join(ROOT, 'data');
   mkdirSync(dataDir, { recursive: true });
   const db = openDatabase(join(dataDir, consoleMode ? 'console.db' : 'despertar.db'));
-  const game = new GameService({ repo: new SqliteGameRepository(db), balance, rng: mathRng, clock: systemClock });
+  const repo = new SqliteGameRepository(db);
+  const game = new GameService({ repo, balance, rng: mathRng, clock: systemClock });
+
+  // Overlay do OBS: só nesta máquina; recebe o estado do painel sempre que o jogo muda.
+  const overlayHub = new OverlayHub(() => buildOverlaySnapshot(game, repo, balance, systemClock.now()));
+  const overlayPort = Number(process.env.DESPERTAR_OVERLAY_PORT ?? 3220);
+  const overlayServer = startOverlayServer(
+    overlayHub,
+    () => readFileSync(join(ROOT, 'web', 'overlay.html'), 'utf8'),
+    overlayPort,
+    () => console.log(`[overlay] http://127.0.0.1:${overlayPort}/overlay (OBS: Fonte de Navegador 1920×1080)`),
+  );
+  overlayServer.on('error', (err) => console.error('[overlay] não subiu:', err.message));
+  const publishOverlay = () => {
+    try {
+      overlayHub.publish();
+    } catch (err) {
+      console.error('[overlay] erro:', err instanceof Error ? err.message : err);
+    }
+  };
+  const overlayKeepAlive = setInterval(() => overlayHub.keepAlive(), 15_000);
 
   // O terminal onde o bot roda: único lugar de onde vêm os comandos de administração.
   const terminal = createInterface({ input: process.stdin });
@@ -65,6 +88,7 @@ async function main(): Promise<void> {
     }
     try {
       for (const reply of game.admin(cmd)) outbound.enqueue(reply);
+      publishOverlay();
       console.log(`[admin] ok: ${line.trim()}`);
     } catch (err) {
       if (err instanceof AdminRefusal) console.log(`[admin] recusado: ${err.message}`);
@@ -75,6 +99,9 @@ async function main(): Promise<void> {
   let ticker: NodeJS.Timeout | undefined;
   process.on('SIGINT', () => {
     clearInterval(ticker);
+    clearInterval(overlayKeepAlive);
+    overlayHub.close();
+    overlayServer.close();
     tokens?.stop();
     terminal.close();
     void chat.disconnect().finally(() => {
@@ -88,6 +115,7 @@ async function main(): Promise<void> {
     if (!cmd) return;
     try {
       for (const reply of game.handle({ userId: m.userId, displayName: m.displayName }, cmd)) outbound.enqueue(reply);
+      publishOverlay();
     } catch (err) {
       console.error('[jogo] erro ao processar comando:', err instanceof Error ? err.message : err);
     }
@@ -99,6 +127,7 @@ async function main(): Promise<void> {
   ticker = setInterval(() => {
     try {
       for (const announcement of game.tick()) outbound.enqueue(announcement);
+      publishOverlay();
     } catch (err) {
       console.error('[jogo] erro no relógio do jogo:', err instanceof Error ? err.message : err);
     }

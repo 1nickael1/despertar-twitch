@@ -15,12 +15,13 @@ describe('tela de teste local', () => {
   beforeEach(async () => {
     rng = new ScriptedRng();
     bench = new TestBench(testBalance(), ':memory:', rng);
-    server = createServer(createHandler(bench, () => '<h1>Despertar</h1>'));
+    server = createServer(createHandler(bench, () => '<h1>Despertar</h1>', () => '<main>overlay</main>'));
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
 
   afterEach(async () => {
+    bench.overlay.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
@@ -138,5 +139,25 @@ describe('tela de teste local', () => {
 
   it('rota desconhecida dá 404', async () => {
     expect((await fetch(base + '/nada')).status).toBe(404);
+  });
+
+  it('serve o overlay e o estado do painel por SSE', async () => {
+    const page = await fetch(base + '/overlay');
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('overlay');
+
+    rng.push(0);
+    await command('ana', '!despertar');
+    const ctrl = new AbortController();
+    const res = await fetch(base + '/overlay/events', { signal: ctrl.signal });
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const reader = res.body!.getReader();
+    let text = '';
+    const END = '\n\n'; // fim de uma mensagem SSE
+    while (!text.includes(END)) text += new TextDecoder().decode((await reader.read()).value);
+    ctrl.abort();
+    const snap = JSON.parse(text.slice(text.indexOf('data: ') + 6, text.indexOf(END)));
+    expect(snap.ranking).toEqual([expect.objectContaining({ name: 'ana', classId: 'guerreiro', rank: 'F' })]);
+    expect(snap.raid).toBeNull();
   });
 });
