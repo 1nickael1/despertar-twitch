@@ -24,7 +24,7 @@ const T0 = 1_000_000;
 function joined(...hunters: Hunter[]): Raid {
   let raid = openRaid('azul', 'Goblin', T0, b);
   for (const h of hunters) {
-    const r = joinRaid(raid, h, T0);
+    const r = joinRaid(raid, h, T0, b);
     if (!r.ok) throw new Error(r.reason);
     raid = r.raid;
   }
@@ -66,18 +66,18 @@ describe('raid: abertura e entrada', () => {
   it('entrar: só na entrada, uma vez, sem lesão', () => {
     const raid = openRaid('azul', 'Goblin', T0, b);
     const ana = makeHunter({ userId: 'a', displayName: 'ana', level: 3 });
-    const r = joinRaid(raid, ana, T0 + 1_000);
+    const r = joinRaid(raid, ana, T0 + 1_000, b);
     if (!r.ok) throw new Error(r.reason);
     expect(r.raid.participants[0]).toMatchObject({
       userId: 'a', displayName: 'ana', classId: 'guerreiro', rank: 0, level: 3,
-      damage: 0, down: false, downSinceRound: null, attacked: false,
+      damage: 0, down: false, downSinceRound: null, attacked: false, weaponBonus: 0, armorFactor: 1,
     });
-    expect(joinRaid(r.raid, ana, T0 + 2_000)).toEqual({ ok: false, reason: 'already' });
-    expect(joinRaid(raid, ana, T0 + 60_000)).toEqual({ ok: false, reason: 'closed' });
-    expect(joinRaid(started(raid), ana, T0)).toEqual({ ok: false, reason: 'closed' });
+    expect(joinRaid(r.raid, ana, T0 + 2_000, b)).toEqual({ ok: false, reason: 'already' });
+    expect(joinRaid(raid, ana, T0 + 60_000, b)).toEqual({ ok: false, reason: 'closed' });
+    expect(joinRaid(started(raid), ana, T0, b)).toEqual({ ok: false, reason: 'closed' });
     const hurt = makeHunter({ userId: 'b', injuredUntil: T0 + 5_000 });
-    expect(joinRaid(raid, hurt, T0)).toEqual({ ok: false, reason: 'injured' });
-    expect(joinRaid(raid, { ...hurt, injuredUntil: T0 - 1 }, T0).ok).toBe(true);
+    expect(joinRaid(raid, hurt, T0, b)).toEqual({ ok: false, reason: 'injured' });
+    expect(joinRaid(raid, { ...hurt, injuredUntil: T0 - 1 }, T0, b).ok).toBe(true);
   });
 
   it('!atacar: só participante de pé, com a batalha começada, uma vez por rodada', () => {
@@ -102,7 +102,7 @@ describe('raid: abertura e entrada', () => {
 });
 
 describe('raid: dano e queda', () => {
-  const p = (classId: ClassId, level = 1, attacked = false) => ({ classId, level, attacked });
+  const p = (classId: ClassId, level = 1, attacked = false, weaponBonus = 0) => ({ classId, level, attacked, weaponBonus });
 
   it('Guerreiro soma +2 sempre', () => {
     expect(raidDamage(p('guerreiro'), 10, b)).toEqual({ damage: 20, crit: false });
@@ -214,7 +214,7 @@ describe('raid: ranking e recompensas', () => {
     started: true,
     participants: specs.map(([name, damage, down = false]) => ({
       userId: name, displayName: name, classId: 'guerreiro', rank: 0, level: 1,
-      damage, down, downSinceRound: down ? 1 : null, attacked: false,
+      damage, down, downSinceRound: down ? 1 : null, attacked: false, weaponBonus: 0, armorFactor: 1,
     })),
   });
 
@@ -225,11 +225,11 @@ describe('raid: ranking e recompensas', () => {
 
   it('vitória paga caçada do rank × tipo × posição', () => {
     const raid = party('azul', [['ana', 50], ['bia', 40], ['cris', 30], ['duda', 20]]);
-    expect(raidRewards(raid, true, b).map((r) => [r.displayName, r.place, r.damage, r.xp, r.gold, r.xpLoss])).toEqual([
-      ['ana', 1, 50, 60, 18, 0],
-      ['bia', 2, 40, 45, 13, 0],
-      ['cris', 3, 30, 37, 11, 0],
-      ['duda', 4, 20, 30, 9, 0],
+    expect(raidRewards(raid, true, b).map((r) => [r.displayName, r.place, r.damage, r.xp, r.gold, r.xpLoss, r.fragments])).toEqual([
+      ['ana', 1, 50, 60, 18, 0, 2],
+      ['bia', 2, 40, 45, 13, 0, 1],
+      ['cris', 3, 30, 37, 11, 0, 1],
+      ['duda', 4, 20, 30, 9, 0, 1],
     ]);
   });
 
@@ -261,5 +261,30 @@ describe('raid: ranking e recompensas', () => {
   it('quebra: lesão de 10 min, mantendo a mais longa', () => {
     expect(breakPenalty(makeHunter({ injuredUntil: null }), T0, b).injuredUntil).toBe(T0 + 600_000);
     expect(breakPenalty(makeHunter({ injuredUntil: T0 + 900_000 }), T0, b).injuredUntil).toBe(T0 + 900_000);
+  });
+});
+
+describe('raid: equipamento', () => {
+  it('participante guarda arma e armadura ao entrar', () => {
+    const raid = joined(makeHunter({ userId: 'a', weaponId: 'arma-f-forjada', armorId: 'armadura-f-comum' }));
+    expect(raid.participants[0]).toMatchObject({ weaponBonus: 2, armorFactor: 0.85 });
+  });
+
+  it('arma soma no dano', () => {
+    expect(raidDamage({ classId: 'guerreiro', level: 1, attacked: false, weaponBonus: 2 }, 10, b)).toEqual({ damage: 22, crit: false });
+  });
+
+  it('armadura reduz a chance de cair', () => {
+    // Guerreiro cai com 0,16; com a forjada, 0,112. Sorteio 0,13 derruba só sem armadura.
+    const plain = started(joined(makeHunter({ userId: 'a', displayName: 'ana' })));
+    const armored = started(joined(makeHunter({ userId: 'a', displayName: 'ana', armorId: 'armadura-f-forjada' })));
+    expect(resolveRound(plain, b, seqRng([d20(1), 0.13])).report.bossHit!.fell).toBe(true);
+    expect(resolveRound(armored, b, seqRng([d20(1), 0.13])).report.bossHit!.fell).toBe(false);
+  });
+
+  it('derrota não dá fragmento', () => {
+    const raid = { ...openRaid('quebra', 'Boss', T0, b), participants: joined(makeHunter({ userId: 'a' })).participants };
+    expect(raidRewards(raid, false, b)[0]).toMatchObject({ fragments: 0, rank: 0 });
+    expect(raidRewards(raid, true, b)[0]).toMatchObject({ fragments: 4 });
   });
 });

@@ -81,7 +81,7 @@ function simulateRaid(type: PortalType, attackRate: number): string {
   for (let i = 0; i < RAID_RUNS; i++) {
     let raid = openRaid(type, 'Boss', 0, b);
     RAID_PARTY.forEach((p, k) => {
-      const j = joinRaid(raid, { ...createHunter(`p${k}`, `p${k}`, p.classId, 1, 0), level: p.level }, 0);
+      const j = joinRaid(raid, { ...createHunter(`p${k}`, `p${k}`, p.classId, 1, 0), level: p.level }, 0, b);
       if (j.ok) raid = j.raid;
     });
     raid = { ...raid, started: true };

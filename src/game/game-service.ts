@@ -308,7 +308,7 @@ export class GameService {
 
   private joinRaidCommand(h: Hunter, now: number): string[] {
     if (!this.raid) return this.notifyOnce(`${h.userId}:raid`, this.nextPortal ?? 0, msg.raidNone(h.displayName));
-    const r = joinRaid(this.raid, h, now);
+    const r = joinRaid(this.raid, h, now, this.deps.balance);
     if (r.ok) {
       this.raid = r.raid;
       return [msg.raidJoined(h.displayName, r.raid.participants.length)];

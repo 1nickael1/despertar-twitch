@@ -112,7 +112,7 @@ describe('msg', () => {
 
   it('vitória: ranking de dano em uma mensagem só', () => {
     const rw = (place: number, name: string, damage: number, xp: number, gold: number) =>
-      ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0 });
+      ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0, rank: 0, fragments: place === 1 ? 2 : 1 });
     expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toEqual([
       '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
     ]);

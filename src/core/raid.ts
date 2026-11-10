@@ -1,5 +1,6 @@
 import type { Balance } from '../config/balance';
 import { chance, pick, rollD20, type Rng } from './rng';
+import { armorFactor, raidFragmentsFor, weaponBonus } from './equipment';
 import { applyXp } from './progression';
 import { injuryChance, primaryStat } from './stats';
 import { PORTAL_TYPES, type ClassId, type Hunter, type PortalType } from './types';
@@ -18,6 +19,9 @@ export interface RaidParticipant {
   downSinceRound: number | null;
   /** Usou !atacar na rodada atual. */
   attacked: boolean;
+  /** Arma e armadura no momento de entrar. */
+  weaponBonus: number;
+  armorFactor: number;
 }
 
 export interface Raid {
@@ -65,7 +69,7 @@ export function openRaid(type: PortalType, bossName: string, now: number, b: Bal
 
 export type JoinResult = { ok: true; raid: Raid } | { ok: false; reason: 'closed' | 'already' | 'injured' };
 
-export function joinRaid(raid: Raid, h: Hunter, now: number): JoinResult {
+export function joinRaid(raid: Raid, h: Hunter, now: number, b: Balance): JoinResult {
   if (raid.started || now >= raid.battleStartsAt) return { ok: false, reason: 'closed' };
   if (raid.participants.some((p) => p.userId === h.userId)) return { ok: false, reason: 'already' };
   if (h.injuredUntil !== null && h.injuredUntil > now) return { ok: false, reason: 'injured' };
@@ -79,6 +83,8 @@ export function joinRaid(raid: Raid, h: Hunter, now: number): JoinResult {
     down: false,
     downSinceRound: null,
     attacked: false,
+    weaponBonus: weaponBonus(h, b),
+    armorFactor: armorFactor(h, b),
   };
   return { ok: true, raid: { ...raid, participants: [...raid.participants, p] } };
 }
@@ -116,15 +122,15 @@ export function knockdownChance(classId: ClassId, b: Balance): number {
   return base * b.raid.knockdownFactor;
 }
 
-/** Dano de um golpe: atributo + d20; Guerreiro +2 (boss conta como mais forte); crítico ×2; !atacar +50%. */
+/** Dano de um golpe: atributo + arma + d20; Guerreiro +2 (boss conta como mais forte); crítico ×2; !atacar +50%. */
 export function raidDamage(
-  p: Pick<RaidParticipant, 'classId' | 'level' | 'attacked'>,
+  p: Pick<RaidParticipant, 'classId' | 'level' | 'attacked' | 'weaponBonus'>,
   roll: number,
   b: Balance,
 ): { damage: number; crit: boolean } {
   const cls = b.classes[p.classId];
   const crit = cls.critMin !== null && roll >= cls.critMin;
-  let damage = primaryStat(p.classId, p.level, b) + cls.bonusVsHigherRank + roll;
+  let damage = primaryStat(p.classId, p.level, b) + cls.bonusVsHigherRank + p.weaponBonus + roll;
   if (crit) damage *= 2;
   if (p.attacked) damage = Math.floor(damage * (1 + b.raid.attackBonus));
   return { damage, crit };
@@ -174,7 +180,7 @@ export function resolveRound(raid: Raid, b: Balance, rng: Rng): { raid: Raid; re
       const tanks = standing.filter((p) => p.classId === 'tanque');
       const pool = tanks.length > 0 ? tanks : standing;
       const target = pool.length === 1 ? pool[0] : pick(rng, pool);
-      const fell = chance(rng, knockdownChance(target.classId, b));
+      const fell = chance(rng, knockdownChance(target.classId, b) * target.armorFactor);
       if (fell) {
         target.down = true;
         target.downSinceRound = round;
@@ -212,6 +218,9 @@ export interface RaidReward {
   gold: number;
   /** Portal vermelho: quem terminou caído perde XP. */
   xpLoss: number;
+  /** Rank do participante (o fragmento é desse rank). */
+  rank: number;
+  fragments: number;
 }
 
 /** Recompensa = caçada do rank do jogador × tipo × posição. Derrota não paga. */
@@ -228,6 +237,8 @@ export function raidRewards(raid: Raid, won: boolean, b: Balance): RaidReward[] 
       xp: Math.floor(b.hunt.xpByRank[p.rank] * mult),
       gold: Math.floor(b.hunt.goldByRank[p.rank] * mult),
       xpLoss,
+      rank: p.rank,
+      fragments: won ? raidFragmentsFor(raid.type, i + 1, b) : 0,
     };
   });
 }
