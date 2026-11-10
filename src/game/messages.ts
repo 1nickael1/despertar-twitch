@@ -1,3 +1,4 @@
+import { MAX_MESSAGE_LENGTH } from '../chat/outbound-queue';
 import type { HuntOutcome } from '../core/combat';
 import type { RaidReward, RoundReport } from '../core/raid';
 import { rankLetter, type PortalType } from '../core/types';
@@ -52,6 +53,29 @@ const hunters = (count: number) => `${count} ${count === 1 ? 'caçador' : 'caça
 const SEP = ' ‖ ';
 const MEDALS = ['🥇', '🥈', '🥉'];
 const place = (i: number) => MEDALS[i] ?? `${i + 1}º`;
+/** Rankings mostram até 10 pessoas: pódio completo, do 4º em diante compacto. */
+export const RANKING_SIZE = 10;
+const PODIUM = 3;
+
+/**
+ * Junta as partes com ‖ numa mensagem. Se passar do limite da Twitch, continua numa nova mensagem
+ * ("(cont.) …"), sempre cortando entre partes, nunca no meio de um nome.
+ */
+function pack(parts: string[]): string[] {
+  const out: string[] = [];
+  let current = '';
+  for (const part of parts) {
+    const next = current === '' ? part : current + SEP + part;
+    if (current !== '' && next.length > MAX_MESSAGE_LENGTH) {
+      out.push(current);
+      current = `(cont.) ${part}`;
+    } else {
+      current = next;
+    }
+  }
+  if (current !== '') out.push(current);
+  return out;
+}
 
 export const msg = {
   notAwakened: (n: string) => `${at(n)} você ainda não despertou! Digite !despertar para entrar no jogo.`,
@@ -85,14 +109,20 @@ export const msg = {
   status: (n: string, v: StatusView) =>
     `${at(n)} ${titled(v.title)}${v.classLabel} Rank ${R(v.rank)} · Nv ${v.level} (${v.xpText}) · ${v.gold} ouro · ${v.state}`,
 
-  /** Uma mensagem só, com a pontuação que explica a posição (rank › nível › XP). */
-  ranking: (seasonNumber: number, entries: RankingEntry[]): string =>
+  /** Top 10 com a pontuação que explica a posição (rank › nível › XP); normalmente uma mensagem só. */
+  ranking: (seasonNumber: number, entries: RankingEntry[]): string[] =>
     entries.length === 0
-      ? `🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`
-      : [
+      ? [`🏆 T${seasonNumber}: ninguém no ranking ainda. Seja o primeiro com !despertar!`]
+      : pack([
           `🏆 Ranking T${seasonNumber} (rank › nível › XP)`,
-          ...entries.map((e, i) => `${place(i)} ${titled(e.title)}${e.name} — ${R(e.rank)} · Nv ${e.level} · ${e.xp} XP`),
-        ].join(SEP),
+          ...entries
+            .slice(0, RANKING_SIZE)
+            .map((e, i) =>
+              i < PODIUM
+                ? `${place(i)} ${titled(e.title)}${e.name} — ${R(e.rank)} · Nv ${e.level} · ${e.xp} XP`
+                : `${place(i)} ${titled(e.title)}${e.name} ${R(e.rank)}·${e.level}·${e.xp}`,
+            ),
+        ]),
   rankingSelf: (n: string, position: number, total: number) =>
     `${at(n)} você está em ${position}º de ${total} na temporada.`,
 
@@ -163,13 +193,19 @@ export const msg = {
     for (const v of r.revived) parts.push(`✨ ${v.healer} levantou ${v.target}`);
     return parts.join(' · ');
   },
-  /** Ranking de dano numa mensagem só (top 5), com o dano que explica a posição. */
-  raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string =>
-    [
+  /** Ranking de dano (top 10) com o dano e a recompensa de cada um; normalmente uma mensagem só. */
+  raidVictory: (type: PortalType, boss: string, rewards: RaidReward[]): string[] =>
+    pack([
       `🏆 ${boss} derrotado! ${PORTAL_LABEL[type]} limpo`,
-      ...rewards.slice(0, 5).map((r, i) => `${place(i)} ${r.displayName} — ${r.damage} de dano → +${r.xp} XP, +${r.gold} ouro`),
-      ...(rewards.length > 5 ? [`+${rewards.length - 5} caçadores também receberam recompensa`] : []),
-    ].join(SEP),
+      ...rewards
+        .slice(0, RANKING_SIZE)
+        .map((r, i) =>
+          i < PODIUM
+            ? `${place(i)} ${r.displayName} — ${r.damage} de dano → +${r.xp} XP, +${r.gold} ouro`
+            : `${place(i)} ${r.displayName} ${r.damage} (+${r.xp} XP +${r.gold} ouro)`,
+        ),
+      ...(rewards.length > RANKING_SIZE ? [`+${rewards.length - RANKING_SIZE} caçadores também receberam recompensa`] : []),
+    ]),
   raidDefeat: (type: PortalType, boss: string, hp: number) =>
     `💨 O tempo acabou: ${boss} sobreviveu com ${hp} HP e o ${PORTAL_LABEL[type]} se fechou.`,
   raidWiped: (type: PortalType, boss: string, hp: number) =>

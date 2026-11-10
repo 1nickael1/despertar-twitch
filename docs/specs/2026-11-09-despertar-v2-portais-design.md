@@ -147,8 +147,11 @@ dano que explica cada posição, colocados separados por `‖`:
 🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro
 ```
 
-Mostra os 5 primeiros (🥇 🥈 🥉 4º 5º); acima disso termina com "‖ +N caçadores também receberam
-recompensa". Cabe no limite de 500 caracteres da Twitch.
+Mostra os **10 primeiros**: pódio completo (🥇 🥈 🥉) e do 4º ao 10º compacto
+(`4º duda 30 (+30 XP +9 ouro)`); acima de 10 termina com "‖ +N caçadores também receberam
+recompensa". Se nomes muito longos passarem dos 500 caracteres da Twitch, o resto continua numa 2ª
+mensagem ("(cont.) …"), sempre cortando entre colocados. O `!ranking` segue a mesma regra
+(`4º duda F·2·5`).
 
 **Derrota:**
 

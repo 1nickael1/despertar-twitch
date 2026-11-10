@@ -24,7 +24,7 @@ import { closeSeason, newSeason } from '../core/season';
 import { buyItem, findItem, healHunter, itemIds, itemPrice } from '../core/shop';
 import { CLASS_IDS, MAX_RANK, type Hunter, type PortalType, type Season } from '../core/types';
 import type { GameRepository } from '../data/repository';
-import { fmtDuration, msg } from './messages';
+import { fmtDuration, msg, RANKING_SIZE } from './messages';
 
 /** Quem fala no chat. De propósito não existe "moderador": o chat nunca administra o jogo. */
 export interface Author {
@@ -289,7 +289,7 @@ export class GameService {
       if (broke) for (const h of repo.listHunters()) repo.saveHunter(breakPenalty(h, now, b));
     });
     const out: string[] = [];
-    if (won) out.push(msg.raidVictory(raid.type, raid.bossName, rewards));
+    if (won) out.push(...msg.raidVictory(raid.type, raid.bossName, rewards));
     else if (broke) out.push(msg.raidBreak(raid.bossName, b.raid.breakInjuryMs));
     else if (wiped) out.push(msg.raidWiped(raid.type, raid.bossName, raid.hp));
     else out.push(msg.raidDefeat(raid.type, raid.bossName, raid.hp));
@@ -512,12 +512,12 @@ export class GameService {
       const pos = ranked.findIndex((h) => h.userId === author.userId);
       return [pos < 0 ? msg.notAwakened(author.displayName) : msg.rankingSelf(author.displayName, pos + 1, ranked.length)];
     }
-    return [
-      msg.ranking(
-        season.number,
-        ranked.slice(0, 5).map((h) => ({ name: h.displayName, title: this.titleLabel(h), rank: h.rank, level: h.level, xp: h.xp })),
-      ),
-    ];
+    return msg.ranking(
+      season.number,
+      ranked
+        .slice(0, RANKING_SIZE)
+        .map((h) => ({ name: h.displayName, title: this.titleLabel(h), rank: h.rank, level: h.level, xp: h.xp })),
+    );
   }
 
   private listTitles(h: Hunter): string {

@@ -46,8 +46,8 @@ describe('msg', () => {
     expect(t).toBe('@ana [Top 1 · T1] Assassino Rank E · Nv 7 (40/90 XP) · 32 ouro · ✅ pronto para caçar');
   });
 
-  it('ranking: uma mensagem só, com medalhas e a pontuação que explica a posição', () => {
-    expect(msg.ranking(1, [])).toContain('ninguém');
+  it('ranking: pódio completo, 4º em diante compacto, numa mensagem só', () => {
+    expect(msg.ranking(1, [])).toEqual([expect.stringContaining('ninguém')]);
     const entry = (name: string, rank: number, level: number, xp: number, title: string | null = null) =>
       ({ name, title, rank, level, xp });
     expect(
@@ -57,10 +57,34 @@ describe('msg', () => {
         entry('caio', 0, 3, 12),
         entry('duda', 0, 2, 5),
       ]),
-    ).toBe(
+    ).toEqual([
       '🏆 Ranking T1 (rank › nível › XP) ‖ 🥇 ana — C · Nv 17 · 35 XP ‖ 🥈 [Rank S · T1] bia — D · Nv 12 · 80 XP' +
-        ' ‖ 🥉 caio — F · Nv 3 · 12 XP ‖ 4º duda — F · Nv 2 · 5 XP',
-    );
+        ' ‖ 🥉 caio — F · Nv 3 · 12 XP ‖ 4º duda F·2·5',
+    ]);
+  });
+
+  it('ranking: top 10 cabe numa mensagem só', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => ({ name: `cacador${i + 1}`, title: null, rank: 0, level: 5, xp: 40 }));
+    const out = msg.ranking(1, ten);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('‖ 10º cacador10 F·5·40');
+    expect(out[0].length).toBeLessThanOrEqual(500);
+  });
+
+  it('ranking muito longo continua numa 2ª mensagem, cortando entre colocados', () => {
+    const long = Array.from({ length: 10 }, (_, i) => ({
+      name: `nome_bem_comprido_${i + 1}`.padEnd(25, 'x'),
+      title: 'Rank S · T1 · Lenda',
+      rank: 6,
+      level: 40,
+      xp: 9999,
+    }));
+    const out = msg.ranking(1, long);
+    expect(out).toHaveLength(2);
+    for (const m of out) expect(m.length).toBeLessThanOrEqual(500);
+    expect(out[1].startsWith('(cont.) ')).toBe(true);
+    // nenhum colocado foi cortado no meio
+    expect(out.join(' ‖ ').match(/nome_bem_comprido_/g)).toHaveLength(10);
   });
 
   it('portal aberto explica a regra do tipo e o tempo de entrada', () => {
@@ -89,14 +113,18 @@ describe('msg', () => {
   it('vitória: ranking de dano em uma mensagem só', () => {
     const rw = (place: number, name: string, damage: number, xp: number, gold: number) =>
       ({ userId: name, displayName: name, place, damage, xp, gold, xpLoss: 0 });
-    expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toBe(
+    expect(msg.raidVictory('azul', 'Goblin', [rw(1, 'ana', 50, 60, 18), rw(2, 'bia', 40, 45, 13)])).toEqual([
       '🏆 Goblin derrotado! 🔵 PORTAL AZUL limpo ‖ 🥇 ana — 50 de dano → +60 XP, +18 ouro ‖ 🥈 bia — 40 de dano → +45 XP, +13 ouro',
-    );
-    const many = msg.raidVictory('azul', 'Goblin', [1, 2, 3, 4, 5, 6, 7].map((i) => rw(i, `p${i}`, 100 - i, 30, 9)));
-    expect(many).toContain('‖ 5º p5 — 95 de dano');
-    expect(many).not.toContain('p6');
-    expect(many.endsWith(' ‖ +2 caçadores também receberam recompensa')).toBe(true);
-    expect(many.length).toBeLessThanOrEqual(500); // limite de mensagem da Twitch
+    ]);
+    // top 10: pódio completo, 4º–10º compacto, o resto resumido; cabe no limite da Twitch
+    const many = msg.raidVictory('azul', 'Goblin', Array.from({ length: 12 }, (_, i) => rw(i + 1, `jogador${i + 1}`, 100 - i, 30, 9)));
+    expect(many).toHaveLength(1);
+    expect(many[0]).toContain('‖ 🥉 jogador3 — 98 de dano → +30 XP, +9 ouro');
+    expect(many[0]).toContain('‖ 4º jogador4 97 (+30 XP +9 ouro)');
+    expect(many[0]).toContain('‖ 10º jogador10 91 (+30 XP +9 ouro)');
+    expect(many[0]).not.toContain('jogador11');
+    expect(many[0].endsWith(' ‖ +2 caçadores também receberam recompensa')).toBe(true);
+    expect(many[0].length).toBeLessThanOrEqual(500); // limite de mensagem da Twitch
   });
 
   it('derrota, quebra e caídos do vermelho', () => {

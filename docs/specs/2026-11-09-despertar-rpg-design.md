@@ -163,7 +163,7 @@ compatível com uma temporada de 2 semanas.
 ### 5.6 Ranking
 Ordenação da temporada: rank ↓, nível ↓, XP ↓, `rank_reached_at` ↑.
 Não há ranking semanal separado: com temporadas de 2 semanas, o ranking da temporada já cumpre esse papel.
-`!ranking` mostra top 5; `!ranking eu` mostra a posição do autor.
+`!ranking` mostra o top 10 (pódio completo, 4º em diante compacto, normalmente numa mensagem só); `!ranking eu` mostra a posição do autor.
 
 ## 6. Comandos e mensagens
 
