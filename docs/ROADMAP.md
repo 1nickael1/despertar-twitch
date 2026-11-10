@@ -67,11 +67,12 @@ Para decidir no design da v3:
 
 ## v4 — Overlay no OBS
 
-- Coluna na lateral direita (`?lado=esquerda` troca), visual de janela de sistema, ícones de classe.
+- Página de 400×800 que é só o painel (posição e tamanho se ajustam no OBS), visual de janela de
+  sistema, ícones de classe.
 - Mostra o ranking (top 5) e, durante a raid, só a raid: entrada, barra de HP, caçadores, última
   rodada e o resultado por 20 s.
 - O bot manda o estado completo do painel por SSE; a página só desenha.
-- **No OBS:** Fonte de Navegador com `http://127.0.0.1:3220/overlay`, 1920×1080, por cima da cena.
+- **No OBS:** Fonte de Navegador com `http://127.0.0.1:3220/overlay`, 400×800, por cima da cena.
 - Para depois: som, fotos da Twitch, duelo no overlay, avisos de nível/rank/forja.
 
 ## Pendências fora das versões

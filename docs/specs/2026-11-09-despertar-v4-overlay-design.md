@@ -13,7 +13,7 @@ manhwa. A página só exibe: ninguém comanda o jogo por ela.
 
 | Tema | Decisão |
 |---|---|
-| Posição | Coluna na lateral **direita** (`?lado=esquerda` na URL troca o lado) |
+| Posição | Página de **400×800** que é só o painel; posição e tamanho se ajustam direto na fonte do OBS (lateral direita da tela) |
 | Conteúdo | Só **raid** e **ranking** por enquanto |
 | Som | Nenhum por enquanto |
 | Personagens | **Ícone de classe** (sem foto da Twitch) |
@@ -24,7 +24,7 @@ manhwa. A página só exibe: ninguém comanda o jogo por ela.
 ## 2. Escopo
 
 ### Entra na v4
-- Página `web/overlay.html` (1920×1080, fundo transparente, coluna de 380 px).
+- Página `web/overlay.html` (400×800, fundo transparente, painel de 380 px com 10 px de margem para o brilho).
 - Servidor do overlay dentro do processo do bot: `http://127.0.0.1:3220/overlay` (só nesta máquina).
 - Mesma página na tela de teste local, com link "Abrir overlay", ligada ao jogo de teste.
 - Guardar no jogo o resumo da última rodada e o resultado da raid (hoje só viram texto).
@@ -123,7 +123,6 @@ interface OverlaySnapshot {
 - Desenha a partir do estado; contagens regressivas com `requestAnimationFrame`/1 s usando
   `serverNow`; a barra de HP anima comparando com o estado anterior.
 - Mostra o painel do resultado só enquanto `serverNow-corrigido < result.until`.
-- `?lado=esquerda` muda o lado.
 
 ## 5. Testes
 
@@ -139,8 +138,8 @@ interface OverlaySnapshot {
 ## 6. Como usar no OBS
 
 1. Rodar o bot (`npm run dev`).
-2. OBS → Fontes → **Navegador** → URL `http://127.0.0.1:3220/overlay`, largura 1920, altura 1080.
-3. Deixar a fonte por cima da cena do jogo. O fundo é transparente.
+2. OBS → Fontes → **Navegador** → URL `http://127.0.0.1:3220/overlay`, largura **400**, altura **800**.
+3. Deixar a fonte por cima da cena do jogo e arrastar/redimensionar no canto que quiser. O fundo é transparente.
 
 ## 7. Para depois
 

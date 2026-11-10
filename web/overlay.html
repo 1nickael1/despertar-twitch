@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1920, height=1080">
+<meta name="viewport" content="width=400, height=800">
 <title>Despertar · overlay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -18,10 +18,10 @@
     --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: transparent; overflow: hidden; }
+  /* A página inteira é o painel (400×800): posição e tamanho se ajustam direto na fonte do OBS. */
+  html, body { margin: 0; width: 400px; height: 800px; background: transparent; overflow: hidden; }
   body { font-family: Rajdhani, 'Segoe UI', system-ui, sans-serif; color: var(--text); }
-  .rail { position: fixed; top: 40px; right: 40px; width: 380px; display: flex; flex-direction: column; gap: 14px; }
-  .rail.left { right: auto; left: 40px; }
+  .rail { position: absolute; top: 10px; left: 10px; width: 380px; display: flex; flex-direction: column; gap: 14px; }
 
   .win {
     position: relative; background: var(--glass); border: 1px solid var(--line);
@@ -91,7 +91,6 @@
   // Os nomes vêm do chat: tudo é montado com textContent, nunca com innerHTML.
   const NS = 'http://www.w3.org/2000/svg';
   const rail = document.getElementById('rail');
-  if (new URLSearchParams(location.search).get('lado') === 'esquerda') rail.classList.add('left');
 
   const PORTAL = {
     azul: { label: 'Portal azul', color: '#4cc9ff' },

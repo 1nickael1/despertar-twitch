@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     overlayHub,
     () => readFileSync(join(ROOT, 'web', 'overlay.html'), 'utf8'),
     overlayPort,
-    () => console.log(`[overlay] http://127.0.0.1:${overlayPort}/overlay (OBS: Fonte de Navegador 1920×1080)`),
+    () => console.log(`[overlay] http://127.0.0.1:${overlayPort}/overlay (OBS: Fonte de Navegador 400×800)`),
   );
   overlayServer.on('error', (err) => console.error('[overlay] não subiu:', err.message));
   const publishOverlay = () => {
