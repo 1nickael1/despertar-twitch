@@ -11,6 +11,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 | [plans/2026-11-09-despertar-v1.md](plans/2026-11-09-despertar-v1.md) | Plano executado da v1 |
 | [plans/2026-11-09-despertar-v1.1-loja.md](plans/2026-11-09-despertar-v1.1-loja.md) | Plano executado da v1.1 |
 | [specs/2026-11-09-despertar-v2-portais-design.md](specs/2026-11-09-despertar-v2-portais-design.md) | Spec da v2 (Portais) |
+| [plans/2026-11-09-despertar-v2-portais.md](plans/2026-11-09-despertar-v2-portais.md) | Plano executado da v2 |
 
 ## Status
 
@@ -18,7 +19,7 @@ cada versão ganha spec e plano próprios (em `specs/` e `plans/`) quando começ
 |---|---|---|
 | **v1 — Despertar** | Ranks F→S, 5 classes, `!cacar`, `!reavaliar`, temporadas de 14 dias, títulos, ranking, administração só pelo terminal, renovação automática do token | ✅ no `master` |
 | **v1.1 — Loja** | `!loja`, `!comprar`, `!usar` / `!pocao`, `!inventario`; Poção de Cura (zera descanso, lesão e reavaliação; uma vitória nunca paga uma) | ✅ no `master` |
-| **v2 — Portais** | Raids coletivas | 📝 spec escrita, aguardando revisão |
+| **v2 — Portais** | Raids coletivas: `!raid`, `!atacar`, `/portal`, portal azul / vermelho / quebra, ranking de dano; `!ranking` em uma mensagem por colocado | ✅ no ramo `v2-portais` |
 | **v3 — Equipamento e PvP** | Drops, equipamentos, duelos | ⏳ |
 | **v4 — Overlay** | Tela no OBS | ⏳ |
 
@@ -66,5 +67,6 @@ Para decidir no design da v3:
 
 - **Primeiro teste no chat real** (com a live desligada): `npm --prefix despertar run dev` e
   `!despertar` no canal. Até agora o bot foi testado no console e na tela local.
+- **HP do boss escalando** com número de jogadores e rank, quando o chat crescer (spec v2, seção 11).
 - **Balanceamento das classes** (`npm run sim`): o Mago passa de 90% de vitória no fim de cada rank;
   Curandeiro e Tanque caem para ~40% no começo dos ranks altos. Bom tema para uma live de ajuste.
