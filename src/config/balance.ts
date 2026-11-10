@@ -52,6 +52,33 @@ const raidSchema = z
     path: ['battleMs'],
   });
 
+const rankNames = z.array(z.string().min(1)).length(7);
+const perRankInt = z.array(z.number().int().nonnegative()).length(7);
+const perRankFactor = z.array(z.number().gt(0).max(1)).length(7);
+
+const equipmentSchema = z.object({
+  weapon: z
+    .object({ names: rankNames, commonBonus: perRankInt, forgedBonus: perRankInt, priceMultiplier: z.number().positive() })
+    .refine((w) => w.forgedBonus.every((f, i) => f > w.commonBonus[i]), {
+      message: 'a arma forjada precisa ser mais forte que a da loja em todo rank',
+      path: ['forgedBonus'],
+    }),
+  armor: z
+    .object({ names: rankNames, commonFactor: perRankFactor, forgedFactor: perRankFactor, priceMultiplier: z.number().positive() })
+    .refine((a) => a.forgedFactor.every((f, i) => f < a.commonFactor[i]), {
+      message: 'a armadura forjada precisa proteger mais que a da loja em todo rank',
+      path: ['forgedFactor'],
+    }),
+  fragmentDropChance: probability,
+  raidFragments: z.object({
+    azul: z.number().int().nonnegative(),
+    vermelho: z.number().int().nonnegative(),
+    quebra: z.number().int().nonnegative(),
+  }),
+  raidTopDamageBonusFragments: z.number().int().nonnegative(),
+  forge: z.object({ fragments: z.number().int().min(1), goldMultiplier: z.number().nonnegative() }),
+});
+
 /** Maior múltiplo do ouro base que uma única vitória pode render (crítico dobra). */
 export function maxWinGoldMultiplier(b: { classes: Record<string, { critMin: number | null }> }): number {
   return Object.values(b.classes).some((c) => c.critMin !== null) ? 2 : 1;
@@ -91,6 +118,7 @@ export const balanceSchema = z.object({
     items: z.object({ pocao: shopItemSchema }),
   }),
   raid: raidSchema,
+  equipment: equipmentSchema,
   classes: z.object({
     guerreiro: classSchema,
     mago: classSchema,
@@ -107,6 +135,15 @@ export const balanceSchema = z.object({
       ctx.addIssue({
         code: 'custom',
         path: ['shop', 'items', id, 'priceMultiplier'],
+        message: `uma vitória não pode pagar o item: use um valor maior que ${maxWin}`,
+      });
+    }
+  }
+  for (const slot of ['weapon', 'armor'] as const) {
+    if (b.equipment[slot].priceMultiplier <= maxWin) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['equipment', slot, 'priceMultiplier'],
         message: `uma vitória não pode pagar o item: use um valor maior que ${maxWin}`,
       });
     }

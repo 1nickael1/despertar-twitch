@@ -44,6 +44,24 @@
     "redFallXpHunts": 2,
     "breakInjuryMs": 600000
   },
+  "equipment": {
+    "weapon": {
+      "names": ["Lâmina Enferrujada", "Espada de Ferro", "Lâmina de Aço", "Espada Rúnica", "Lâmina de Mithril", "Espada Dracônica", "Lâmina do Monarca"],
+      "commonBonus": [1, 1, 1, 2, 2, 2, 3],
+      "forgedBonus": [2, 2, 3, 3, 4, 4, 5],
+      "priceMultiplier": 6
+    },
+    "armor": {
+      "names": ["Couro Gasto", "Cota de Couro", "Cota de Malha", "Peitoral de Aço", "Armadura Rúnica", "Escamas de Dragão", "Manto do Monarca"],
+      "commonFactor": [0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85],
+      "forgedFactor": [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
+      "priceMultiplier": 5
+    },
+    "fragmentDropChance": 0.5,
+    "raidFragments": { "azul": 1, "vermelho": 2, "quebra": 3 },
+    "raidTopDamageBonusFragments": 1,
+    "forge": { "fragments": 6, "goldMultiplier": 2 }
+  },
   "classes": {
     "guerreiro": { "label": "Guerreiro", "primary": "FOR", "base": 8, "growth": 1.5, "vit": 6, "bonusVsHigherRank": 2, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
     "mago": { "label": "Mago", "primary": "INT", "base": 7, "growth": 1.8, "vit": 3, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },

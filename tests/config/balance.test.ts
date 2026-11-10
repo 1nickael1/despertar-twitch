@@ -70,4 +70,30 @@ describe('balance', () => {
     raw.raid.placeMultipliers = [2, 0.5];
     expect(() => parseBalance(raw)).toThrow(/raid\.placeMultipliers/);
   });
+
+  it('tem a seção equipment com os valores aprovados', () => {
+    const b = loadBalance(BALANCE_PATH);
+    expect(b.equipment.weapon.names[0]).toBe('Lâmina Enferrujada');
+    expect(b.equipment.weapon.forgedBonus[0]).toBe(2);
+    expect(b.equipment.armor.forgedFactor[0]).toBe(0.7);
+    expect(b.equipment.forge).toEqual({ fragments: 6, goldMultiplier: 2 });
+  });
+
+  it('recusa arma forjada que não é mais forte que a da loja', () => {
+    const raw = rawBalance();
+    raw.equipment.weapon.forgedBonus[3] = raw.equipment.weapon.commonBonus[3];
+    expect(() => parseBalance(raw)).toThrow(/equipment\.weapon\.forgedBonus/);
+  });
+
+  it('recusa armadura forjada que não protege mais que a da loja', () => {
+    const raw = rawBalance();
+    raw.equipment.armor.forgedFactor[0] = 0.9;
+    expect(() => parseBalance(raw)).toThrow(/equipment\.armor\.forgedFactor/);
+  });
+
+  it('recusa equipamento que uma vitória pagaria', () => {
+    const raw = rawBalance();
+    raw.equipment.weapon.priceMultiplier = 2;
+    expect(() => parseBalance(raw)).toThrow(/equipment\.weapon\.priceMultiplier/);
+  });
 });
