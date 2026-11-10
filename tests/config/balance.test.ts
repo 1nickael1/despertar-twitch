@@ -43,4 +43,31 @@ describe('balance', () => {
     raw.shop.items.pocao.priceMultiplier = 1.5;
     expect(() => parseBalance(raw)).not.toThrow();
   });
+
+  it('tem a seção raid com os valores aprovados', () => {
+    const b = loadBalance(BALANCE_PATH);
+    expect(b.raid.bossHp).toEqual({ azul: 500, vermelho: 800, quebra: 1000 });
+    expect(b.raid.battleMs / b.raid.roundMs).toBe(15);
+    expect(b.raid.entryMs).toBe(60_000);
+  });
+
+  it('recusa batalha que não é múltiplo da rodada', () => {
+    const raw = rawBalance();
+    raw.raid.roundMs = 7_000;
+    expect(() => parseBalance(raw)).toThrow(/raid\.battleMs/);
+  });
+
+  it('recusa todos os pesos de portal zerados', () => {
+    const raw = rawBalance();
+    raw.raid.typeWeights = { azul: 0, vermelho: 0, quebra: 0 };
+    expect(() => parseBalance(raw)).toThrow(/raid\.typeWeights/);
+  });
+
+  it('recusa multiplicadores de posição fora de ordem ou abaixo de 1', () => {
+    const raw = rawBalance();
+    raw.raid.placeMultipliers = [1.25, 2];
+    expect(() => parseBalance(raw)).toThrow(/raid\.placeMultipliers/);
+    raw.raid.placeMultipliers = [2, 0.5];
+    expect(() => parseBalance(raw)).toThrow(/raid\.placeMultipliers/);
+  });
 });

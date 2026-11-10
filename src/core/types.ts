@@ -48,3 +48,10 @@ export interface HallOfFameEntry {
 export function rankLetter(rank: number): RankLetter {
   return RANKS[rank];
 }
+
+export const PORTAL_TYPES = ['azul', 'vermelho', 'quebra'] as const;
+export type PortalType = (typeof PORTAL_TYPES)[number];
+
+export function isPortalType(value: unknown): value is PortalType {
+  return typeof value === 'string' && (PORTAL_TYPES as readonly string[]).includes(value);
+}

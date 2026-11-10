@@ -30,6 +30,20 @@
       }
     }
   },
+  "raid": {
+    "intervalMs": 1800000,
+    "typeWeights": { "azul": 60, "vermelho": 30, "quebra": 10 },
+    "entryMs": 60000,
+    "battleMs": 300000,
+    "roundMs": 20000,
+    "bossHp": { "azul": 500, "vermelho": 800, "quebra": 1000 },
+    "rewardMultiplier": { "azul": 3, "vermelho": 5, "quebra": 6 },
+    "placeMultipliers": [2, 1.5, 1.25],
+    "attackBonus": 0.5,
+    "knockdownFactor": 0.5,
+    "redFallXpHunts": 2,
+    "breakInjuryMs": 600000
+  },
   "classes": {
     "guerreiro": { "label": "Guerreiro", "primary": "FOR", "base": 8, "growth": 1.5, "vit": 6, "bonusVsHigherRank": 2, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },
     "mago": { "label": "Mago", "primary": "INT", "base": 7, "growth": 1.8, "vit": 3, "bonusVsHigherRank": 0, "critMin": null, "injuryImmune": false, "fixedInjuryChance": null, "lossXpFraction": 0 },

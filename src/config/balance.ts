@@ -26,6 +26,32 @@ const shopItemSchema = z.object({
   priceMultiplier: z.number().positive(),
 });
 
+const perPortal = (n: z.ZodNumber) => z.object({ azul: n, vermelho: n, quebra: n });
+
+const raidSchema = z
+  .object({
+    intervalMs: z.number().int().positive(),
+    typeWeights: perPortal(z.number().nonnegative()).refine((w) => w.azul + w.vermelho + w.quebra > 0, {
+      message: 'pelo menos um tipo de portal precisa de peso maior que 0',
+    }),
+    entryMs: z.number().int().positive(),
+    battleMs: z.number().int().positive(),
+    roundMs: z.number().int().positive(),
+    bossHp: perPortal(z.number().int().positive()),
+    rewardMultiplier: perPortal(z.number().positive()),
+    placeMultipliers: z
+      .array(z.number().min(1))
+      .refine((m) => m.every((v, i) => i === 0 || v <= m[i - 1]), { message: 'use ordem decrescente (1º ganha mais)' }),
+    attackBonus: z.number().nonnegative(),
+    knockdownFactor: probability,
+    redFallXpHunts: z.number().nonnegative(),
+    breakInjuryMs: z.number().int().positive(),
+  })
+  .refine((r) => r.battleMs % r.roundMs === 0, {
+    message: 'battleMs deve ser múltiplo de roundMs',
+    path: ['battleMs'],
+  });
+
 /** Maior múltiplo do ouro base que uma única vitória pode render (crítico dobra). */
 export function maxWinGoldMultiplier(b: { classes: Record<string, { critMin: number | null }> }): number {
   return Object.values(b.classes).some((c) => c.critMin !== null) ? 2 : 1;
@@ -64,6 +90,7 @@ export const balanceSchema = z.object({
     maxPerPurchase: z.number().int().min(1),
     items: z.object({ pocao: shopItemSchema }),
   }),
+  raid: raidSchema,
   classes: z.object({
     guerreiro: classSchema,
     mago: classSchema,
