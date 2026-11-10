@@ -95,7 +95,10 @@ Na ordem:
    - Resultado para o grupo F atual: Tanque **5%**, Guerreiro **16%**, Curandeiro **17,5%**,
      Assassino **19%**, Mago **20,5%**.
 4. **Curandeiro levanta.** Cada Curandeiro de pé levanta **1 caído** (o que caiu primeiro).
-5. **Ninguém de pé** ao fim da rodada: a raid continua (pode haver poção), mas sem dano.
+5. **Todos caídos** ao fim da rodada: a raid acaba na hora como **derrota** ("💀 Todos caíram!"),
+   com as mesmas consequências do tempo esgotado (no vermelho todos perdem XP; na quebra, lesão em
+   todos). Decidido depois de testar na tela local: manter a raid viva gerava uma mensagem
+   "0 de dano" a cada 20 s até o fim.
 
 **Poção de Cura na batalha:** `!usar pocao` de um participante **caído** gasta a poção e o
 levanta na hora (ele volta a causar dano a partir da próxima rodada). Se ele também tiver

@@ -100,6 +100,7 @@ describe('msg', () => {
     expect(msg.raidDefeat('azul', 'Goblin', 120)).toBe('💨 O tempo acabou: Goblin sobreviveu com 120 HP e o 🔵 PORTAL AZUL se fechou.');
     expect(msg.raidBreak('Hidra', 600_000)).toBe('⚠️ QUEBRA! Hidra escapou do portal. Todos os caçadores estão lesionados por 10min.');
     expect(msg.raidRedFallen([{ name: 'bia', xp: 20 }])).toBe('🔴 Quem terminou caído perdeu XP: bia (-20 XP)');
+    expect(msg.raidWiped('vermelho', 'Ogro', 640)).toBe('💀 Todos caíram! Ogro venceu com 640 HP e o 🔴 PORTAL VERMELHO se fechou.');
   });
 
   it('lista de títulos marca o equipado', () => {

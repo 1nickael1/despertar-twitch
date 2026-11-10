@@ -265,6 +265,8 @@ export class GameService {
       raid = next;
       out.push(msg.raidRound(raid.bossName, report));
       if (report.won) return [...out, ...this.finishRaid(raid, true, now)];
+      // Todos caídos: derrota na hora (sem rodadas vazias floodando o chat).
+      if (raid.participants.every((p) => p.down)) return [...out, ...this.finishRaid(raid, false, now, true)];
     }
     this.raid = raid;
     if (raid.round >= raid.totalRounds) out.push(...this.finishRaid(raid, false, now));
@@ -272,7 +274,7 @@ export class GameService {
   }
 
   /** Grava recompensas, perdas e lesões numa transação só e agenda o próximo portal. */
-  private finishRaid(raid: Raid, won: boolean, now: number): string[] {
+  private finishRaid(raid: Raid, won: boolean, now: number, wiped = false): string[] {
     const { repo, balance: b } = this.deps;
     this.raid = null;
     this.nextPortal = now + b.raid.intervalMs;
@@ -289,6 +291,7 @@ export class GameService {
     const out: string[] = [];
     if (won) out.push(...msg.raidVictory(raid.type, raid.bossName, rewards));
     else if (broke) out.push(msg.raidBreak(raid.bossName, b.raid.breakInjuryMs));
+    else if (wiped) out.push(msg.raidWiped(raid.type, raid.bossName, raid.hp));
     else out.push(msg.raidDefeat(raid.type, raid.bossName, raid.hp));
     const fallen = rewards.filter((r) => r.xpLoss > 0);
     if (fallen.length > 0) out.push(msg.raidRedFallen(fallen.map((r) => ({ name: r.displayName, xp: r.xpLoss }))));

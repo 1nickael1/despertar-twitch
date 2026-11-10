@@ -166,6 +166,8 @@ export const msg = {
   ],
   raidDefeat: (type: PortalType, boss: string, hp: number) =>
     `💨 O tempo acabou: ${boss} sobreviveu com ${hp} HP e o ${PORTAL_LABEL[type]} se fechou.`,
+  raidWiped: (type: PortalType, boss: string, hp: number) =>
+    `💀 Todos caíram! ${boss} venceu com ${hp} HP e o ${PORTAL_LABEL[type]} se fechou.`,
   raidRedFallen: (entries: { name: string; xp: number }[]) =>
     `🔴 Quem terminou caído perdeu XP: ${entries.map((e) => `${e.name} (-${e.xp} XP)`).join(' · ')}`,
   raidBreak: (boss: string, injuryMs: number) =>

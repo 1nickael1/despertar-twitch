@@ -160,15 +160,45 @@ describe('GameService: raid', () => {
       b.raid.battleMs = b.raid.roundMs; // uma rodada só
     });
     awaken(ana);
+    awaken(bia);
     repo.saveHunter({ ...repo.getHunter('u-ana')!, xp: 5 });
     portal('vermelho');
     say(ana, '!raid');
+    say(bia, '!raid');
     tickAfter(MIN);
-    rng.push(d20(1), 0); // 11 de dano; único alvo cai
+    rng.push(d20(1), d20(1), 0, 0); // 22 de dano; boss mira ana e ela cai; bia segue de pé
     const out = tickAfter(20_000).join('\n');
-    expect(out).toContain('Goblin sobreviveu com 789 HP');
+    expect(out).toContain('Goblin sobreviveu com 778 HP');
     expect(out).toContain('🔴 Quem terminou caído perdeu XP: ana (-20 XP)');
     expect(repo.getHunter('u-ana')).toMatchObject({ level: 1, xp: 0 });
+  });
+
+  it('todos caídos: a raid acaba na hora como derrota', () => {
+    const { rng, game, say, awaken, tickAfter, portal } = setup();
+    awaken(ana);
+    portal('azul');
+    say(ana, '!raid');
+    tickAfter(MIN);
+    rng.push(d20(1), 0); // único participante cai na rodada 1
+    const out = tickAfter(20_000);
+    expect(out[0]).toContain('💀 ana caiu!');
+    expect(out[1]).toBe('💀 Todos caíram! Goblin venceu com 489 HP e o 🔵 PORTAL AZUL se fechou.');
+    expect(game.currentRaid).toBeNull();
+    expect(tickAfter(20_000)).toEqual([]); // nenhuma rodada vazia depois
+  });
+
+  it('todos caídos no vermelho: todos perdem XP', () => {
+    const { repo, rng, say, awaken, tickAfter, portal } = setup();
+    awaken(ana);
+    repo.saveHunter({ ...repo.getHunter('u-ana')!, xp: 25 });
+    portal('vermelho');
+    say(ana, '!raid');
+    tickAfter(MIN);
+    rng.push(d20(1), 0);
+    const out = tickAfter(20_000).join('\n');
+    expect(out).toContain('Todos caíram!');
+    expect(out).toContain('ana (-20 XP)');
+    expect(repo.getHunter('u-ana')!.xp).toBe(5);
   });
 
   it('/pausar cancela a raid; /retomar reagenda o portal', () => {
