@@ -5,12 +5,13 @@ import {
   markAttack,
   openRaid,
   raidDamage,
+  resolveRound,
   reviveWithPotion,
   rollPortalType,
   type Raid,
 } from '../../src/core/raid';
 import type { ClassId, Hunter } from '../../src/core/types';
-import { makeHunter, seqRng, testBalance } from '../helpers';
+import { d20, makeHunter, seqRng, testBalance } from '../helpers';
 
 const b = testBalance();
 const T0 = 1_000_000;
@@ -118,5 +119,86 @@ describe('raid: dano e queda', () => {
     expect(knockdownChance('assassino', b)).toBeCloseTo(0.19);
     expect(knockdownChance('mago', b)).toBeCloseTo(0.205);
     expect(knockdownChance('curandeiro', b)).toBeCloseTo(0.175);
+  });
+});
+
+describe('raid: rodada', () => {
+  const ana = makeHunter({ userId: 'a', displayName: 'ana' }); // Guerreiro
+  const bia = makeHunter({ userId: 'b', displayName: 'bia', classId: 'tanque' });
+  const cris = makeHunter({ userId: 'c', displayName: 'cris', classId: 'curandeiro' });
+  const duda = makeHunter({ userId: 'd', displayName: 'duda', classId: 'mago' });
+
+  it('soma o dano, guarda no placar e zera o !atacar', () => {
+    let raid = started(joined(ana, duda));
+    const a = markAttack(raid, 'a');
+    if (!a.ok) throw new Error(a.reason);
+    raid = a.raid;
+    // ana: (8+2+10)×1,5 = 30 · duda: 7+10 = 17 · alvo sorteado: ana · não cai
+    const rng = seqRng([d20(10), d20(10), 0, 0.99]);
+    const { raid: next, report } = resolveRound(raid, b, rng);
+    expect(report).toMatchObject({
+      round: 1, totalRounds: 15, groupDamage: 47, attackers: 1, crits: [], hp: 453, maxHp: 500,
+      won: false, bossHit: { name: 'ana', fell: false, tank: false }, revived: [],
+    });
+    expect(next.participants.map((p) => [p.damage, p.attacked])).toEqual([[30, false], [17, false]]);
+    expect(next.round).toBe(1);
+    expect(next.hp).toBe(453);
+    expect(rng.remaining).toBe(0);
+  });
+
+  it('o golpe vai no Tanque de pé, sem sorteio de alvo', () => {
+    const raid = started(joined(ana, bia));
+    const { raid: next, report } = resolveRound(raid, b, seqRng([d20(1), d20(1), 0]));
+    expect(report.bossHit).toEqual({ name: 'bia', fell: true, tank: true });
+    expect(next.participants[1]).toMatchObject({ down: true, downSinceRound: 1 });
+  });
+
+  it('caído não bate; Curandeiro levanta quem caiu primeiro', () => {
+    let raid = started(joined(ana, duda, cris));
+    raid = {
+      ...raid,
+      round: 3,
+      participants: raid.participants.map((p) =>
+        p.userId === 'a' ? { ...p, down: true, downSinceRound: 3 }
+        : p.userId === 'd' ? { ...p, down: true, downSinceRound: 2 }
+        : p,
+      ),
+    };
+    // só cris bate (7+1 = 8); alvo único de pé (cris), sem sorteio de alvo; não cai
+    const { raid: next, report } = resolveRound(raid, b, seqRng([d20(1), 0.99]));
+    expect(report.groupDamage).toBe(8);
+    expect(report.revived).toEqual([{ healer: 'cris', target: 'duda' }]);
+    expect(next.participants.map((p) => p.down)).toEqual([true, false, false]);
+  });
+
+  it('Curandeiro que acabou de cair não levanta ninguém', () => {
+    let raid = started(joined(ana, cris));
+    raid = { ...raid, participants: raid.participants.map((p) => (p.userId === 'a' ? { ...p, down: true, downSinceRound: 1 } : p)) };
+    const { report } = resolveRound(raid, b, seqRng([d20(1), 0]));
+    expect(report.bossHit).toEqual({ name: 'cris', fell: true, tank: false });
+    expect(report.revived).toEqual([]);
+  });
+
+  it('vitória na rodada em que o HP zera, sem golpe do boss', () => {
+    const raid: Raid = { ...started(joined(ana)), hp: 15 };
+    const rng = seqRng([d20(10)]);
+    const { raid: next, report } = resolveRound(raid, b, rng);
+    expect(report).toMatchObject({ won: true, hp: 0, bossHit: null });
+    expect(next.hp).toBe(0);
+    expect(rng.remaining).toBe(0);
+  });
+
+  it('crítico aparece no relatório', () => {
+    const raid = started(joined(makeHunter({ userId: 'e', displayName: 'edu', classId: 'assassino' })));
+    const { report } = resolveRound(raid, b, seqRng([d20(20), 0.99]));
+    expect(report.crits).toEqual(['edu']);
+    expect(report.groupDamage).toBe(56);
+  });
+
+  it('ninguém de pé: sem dano, sem golpe, sem sorteio', () => {
+    let raid = started(joined(ana));
+    raid = { ...raid, participants: [{ ...raid.participants[0], down: true, downSinceRound: 1 }] };
+    const { report } = resolveRound(raid, b, seqRng([]));
+    expect(report).toMatchObject({ groupDamage: 0, bossHit: null, won: false, hp: 500 });
   });
 });

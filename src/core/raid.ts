@@ -1,5 +1,5 @@
 import type { Balance } from '../config/balance';
-import type { Rng } from './rng';
+import { chance, pick, rollD20, type Rng } from './rng';
 import { injuryChance, primaryStat } from './stats';
 import { PORTAL_TYPES, type ClassId, type Hunter, type PortalType } from './types';
 
@@ -127,4 +127,71 @@ export function raidDamage(
   if (crit) damage *= 2;
   if (p.attacked) damage = Math.floor(damage * (1 + b.raid.attackBonus));
   return { damage, crit };
+}
+
+export interface RoundReport {
+  round: number;
+  totalRounds: number;
+  groupDamage: number;
+  /** Quantos usaram !atacar nesta rodada (e estavam de pé). */
+  attackers: number;
+  crits: string[];
+  hp: number;
+  maxHp: number;
+  won: boolean;
+  /** Golpe do boss; null na vitória ou se ninguém estava de pé. */
+  bossHit: { name: string; fell: boolean; tank: boolean } | null;
+  revived: { healer: string; target: string }[];
+}
+
+/**
+ * Uma rodada. Sorteios, na ordem: d20 de cada participante de pé (ordem de entrada),
+ * alvo do boss (só com mais de um candidato) e chance de cair. Na vitória o boss não revida.
+ */
+export function resolveRound(raid: Raid, b: Balance, rng: Rng): { raid: Raid; report: RoundReport } {
+  const round = raid.round + 1;
+  let groupDamage = 0;
+  let attackers = 0;
+  const crits: string[] = [];
+  // Cópias novas: mudar `target`/`fallen` abaixo não altera a raid de entrada.
+  const parts = raid.participants.map((p) => {
+    if (p.down) return { ...p, attacked: false };
+    const { damage, crit } = raidDamage(p, rollD20(rng), b);
+    groupDamage += damage;
+    if (p.attacked) attackers++;
+    if (crit) crits.push(p.displayName);
+    return { ...p, damage: p.damage + damage, attacked: false };
+  });
+  const hp = Math.max(0, raid.hp - groupDamage);
+  const won = hp === 0;
+  let bossHit: RoundReport['bossHit'] = null;
+  const revived: RoundReport['revived'] = [];
+
+  if (!won) {
+    const standing = parts.filter((p) => !p.down);
+    if (standing.length > 0) {
+      const tanks = standing.filter((p) => p.classId === 'tanque');
+      const pool = tanks.length > 0 ? tanks : standing;
+      const target = pool.length === 1 ? pool[0] : pick(rng, pool);
+      const fell = chance(rng, knockdownChance(target.classId, b));
+      if (fell) {
+        target.down = true;
+        target.downSinceRound = round;
+      }
+      bossHit = { name: target.displayName, fell, tank: target.classId === 'tanque' };
+    }
+    // Cada Curandeiro de pé levanta o caído mais antigo (sort estável: empate fica na ordem de entrada).
+    for (const healer of parts.filter((p) => !p.down && p.classId === 'curandeiro')) {
+      const fallen = parts.filter((p) => p.down).sort((x, y) => x.downSinceRound! - y.downSinceRound!)[0];
+      if (!fallen) break;
+      fallen.down = false;
+      fallen.downSinceRound = null;
+      revived.push({ healer: healer.displayName, target: fallen.displayName });
+    }
+  }
+
+  return {
+    raid: { ...raid, hp, round, participants: parts },
+    report: { round, totalRounds: raid.totalRounds, groupDamage, attackers, crits, hp, maxHp: raid.maxHp, won, bossHit, revived },
+  };
 }
